@@ -3,6 +3,7 @@ package com.example
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.compose.BackHandler
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedContent
@@ -81,6 +82,7 @@ import androidx.compose.ui.unit.sp
 import com.example.data.model.ProcessCategoryFilter
 import com.example.data.model.SystemStats
 import com.example.ui.components.ExportDialog
+import com.example.ui.components.FileManagerDialog
 import com.example.ui.components.KillHistoryDialog
 import com.example.ui.components.NavigationMenuSheet
 import com.example.ui.components.NetworkSpeedTestDialog
@@ -89,6 +91,7 @@ import com.example.ui.components.ProcessDetailSheet
 import com.example.ui.components.ProcessFilterBar
 import com.example.ui.components.ProcessTableView
 import com.example.ui.components.ShellWindowDialog
+import com.example.ui.components.SshConnectionDialog
 import com.example.ui.components.SpawnTestTaskDialog
 import com.example.ui.components.SystemInfoDialog
 import com.example.ui.components.SystemMetricsHeader
@@ -136,6 +139,7 @@ fun ProcessManagerApp(viewModel: ProcessManagerViewModel) {
     
     // Tab 0: Trends (First/Primary), Tab 1: Processes (Second), Tab 2: History, Tab 3: Specs
     var selectedBottomNavIndex by remember { mutableIntStateOf(0) }
+    var previousTabIndex by remember { mutableIntStateOf(0) }
     var showNavigationMenu by remember { mutableStateOf(false) }
 
     LaunchedEffect(uiState.snackbarMessage) {
@@ -283,7 +287,8 @@ fun ProcessManagerApp(viewModel: ProcessManagerViewModel) {
                         // ==========================================
                         InlineKillHistoryView(
                             history = uiState.killHistory,
-                            onClearHistory = { viewModel.clearKillHistory() }
+                            onClearHistory = { viewModel.clearKillHistory() },
+                            onOpenMenu = { showNavigationMenu = true }
                         )
                     }
 
@@ -291,7 +296,7 @@ fun ProcessManagerApp(viewModel: ProcessManagerViewModel) {
                         // ==========================================
                         // TAB 3: HARDWARE & SYSTEM SPECIFICATIONS
                         // ==========================================
-                        InlineSystemSpecsView(stats = uiState.systemStats)
+                        InlineSystemSpecsView(stats = uiState.systemStats, onOpenMenu = { showNavigationMenu = true })
                     }
                 }
             }
@@ -308,8 +313,10 @@ fun ProcessManagerApp(viewModel: ProcessManagerViewModel) {
                 onShowPing = { viewModel.setShowPingDialog(true) },
                 onShowTraceroute = { viewModel.setShowTracerouteDialog(true) },
                 onShowShell = { viewModel.setShowShellDialog(true) },
-                onShowKillHistory = { selectedBottomNavIndex = 2 },
-                onShowSystemInfo = { selectedBottomNavIndex = 3 },
+                onShowFileManager = { viewModel.setShowFileManagerDialog(true) },
+                onShowSsh = { viewModel.setShowSshDialog(true) },
+                onShowKillHistory = { previousTabIndex = selectedBottomNavIndex; selectedBottomNavIndex = 2 },
+                onShowSystemInfo = { previousTabIndex = selectedBottomNavIndex; selectedBottomNavIndex = 3 },
                 onShowExport = { viewModel.setShowExportDialog(true) },
                 onSpawnTestTask = { viewModel.setShowSpawnTaskDialog(true) },
                 onTerminateAllBackgroundApps = { viewModel.terminateAllBackgroundApps() },
@@ -365,6 +372,13 @@ fun ProcessManagerApp(viewModel: ProcessManagerViewModel) {
             )
         }
 
+        if (uiState.showFileManagerDialog) {
+            FileManagerDialog(onDismiss = { viewModel.setShowFileManagerDialog(false) })
+        }
+        if (uiState.showSshDialog) {
+            SshConnectionDialog(onDismiss = { viewModel.setShowSshDialog(false) })
+        }
+
         // Spawn Test Background Task Dialog
         if (uiState.showSpawnTaskDialog) {
             SpawnTestTaskDialog(
@@ -399,6 +413,10 @@ fun ProcessManagerApp(viewModel: ProcessManagerViewModel) {
                 onDismiss = { viewModel.setShowSystemInfoDialog(false) }
             )
         }
+    }
+
+    BackHandler(enabled = selectedBottomNavIndex == 2 || selectedBottomNavIndex == 3) {
+        selectedBottomNavIndex = previousTabIndex
     }
 }
 
@@ -459,13 +477,14 @@ fun ProcessTabTopBar(
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(
-                onClick = onTogglePause,
+            Box(
                 modifier = Modifier
-                    .size(24.dp)
+                    .size(28.dp)
                     .clip(CircleShape)
                     .background(SleekSurfaceVariant)
-                    .testTag("process_tab_toggle_pause_button")
+                    .clickable { onTogglePause() }
+                    .testTag("process_tab_toggle_pause_button"),
+                contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = if (isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
@@ -474,13 +493,14 @@ fun ProcessTabTopBar(
                     modifier = Modifier.size(14.dp)
                 )
             }
-            IconButton(
-                onClick = onManualRefresh,
+            Box(
                 modifier = Modifier
-                    .size(24.dp)
+                    .size(28.dp)
                     .clip(CircleShape)
                     .background(SleekSurfaceVariant)
-                    .testTag("process_tab_refresh_button")
+                    .clickable { onManualRefresh() }
+                    .testTag("process_tab_refresh_button"),
+                contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.Refresh,
@@ -497,6 +517,7 @@ fun ProcessTabTopBar(
 fun InlineKillHistoryView(
     history: List<com.example.data.model.KillRecord>,
     onClearHistory: () -> Unit,
+    onOpenMenu: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val timeFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
@@ -513,6 +534,11 @@ fun InlineKillHistoryView(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onOpenMenu, modifier = Modifier.size(36.dp).clip(CircleShape).background(SleekSurfaceVariant).testTag("history_main_menu_button")) {
+                    Icon(Icons.Default.Menu, "Main Menu", tint = SleekOnBackground, modifier = Modifier.size(18.dp))
+                }
+                Spacer(modifier = Modifier.width(10.dp))
             Column {
                 Text(
                     text = "Termination History",
@@ -527,6 +553,7 @@ fun InlineKillHistoryView(
                     style = MaterialTheme.typography.bodySmall,
                     color = SleekTextMuted
                 )
+            }
             }
 
             if (history.isNotEmpty()) {
@@ -661,6 +688,7 @@ fun InlineKillHistoryView(
 @Composable
 fun InlineSystemSpecsView(
     stats: SystemStats,
+    onOpenMenu: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val configuration = LocalConfiguration.current
@@ -671,19 +699,16 @@ fun InlineSystemSpecsView(
             .padding(16.dp)
             .verticalScroll(rememberScrollState())
     ) {
-        Text(
-            text = "System Specifications",
-            style = MaterialTheme.typography.titleMedium.copy(
-                fontWeight = FontWeight.Bold,
-                fontSize = 18.sp
-            ),
-            color = SleekOnBackground
-        )
-        Text(
-            text = "Hardware architecture and runtime parameters",
-            style = MaterialTheme.typography.bodySmall,
-            color = SleekTextMuted
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onOpenMenu, modifier = Modifier.size(36.dp).clip(CircleShape).background(SleekSurfaceVariant).testTag("specs_main_menu_button")) {
+                Icon(Icons.Default.Menu, "Main Menu", tint = SleekOnBackground, modifier = Modifier.size(18.dp))
+            }
+            Spacer(modifier = Modifier.width(10.dp))
+            Column {
+                Text(text = "System Specifications", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, fontSize = 18.sp), color = SleekOnBackground)
+                Text(text = "Hardware architecture and runtime parameters", style = MaterialTheme.typography.bodySmall, color = SleekTextMuted)
+            }
+        }
 
         Spacer(modifier = Modifier.height(14.dp))
 

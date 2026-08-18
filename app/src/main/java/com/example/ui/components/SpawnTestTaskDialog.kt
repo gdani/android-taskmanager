@@ -105,7 +105,7 @@ fun SpawnTestTaskDialog(
                         }
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
-                            text = "Spawn Test Task",
+                            text = "Spawn Test",
                             style = MaterialTheme.typography.titleMedium.copy(
                                 fontWeight = FontWeight.SemiBold,
                                 fontSize = 18.sp

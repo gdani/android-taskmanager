@@ -230,55 +230,28 @@ fun SystemMetricsHeader(
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 // Pause / Play
-                IconButton(
-                    onClick = onTogglePause,
-                    modifier = Modifier
-                        .size(24.dp)
-                        .clip(CircleShape)
-                        .background(SleekSurfaceVariant)
-                        .testTag("toggle_pause_button")
-                ) {
-                    Icon(
-                        imageVector = if (isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
-                        contentDescription = if (isPaused) "Resume Live Monitor" else "Pause Live Monitor",
-                        tint = SleekOnBackground,
-                        modifier = Modifier.size(14.dp)
-                    )
-                }
+                CompactHeaderAction(
+                    icon = if (isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                    contentDescription = if (isPaused) "Resume Live Monitor" else "Pause Live Monitor",
+                    testTag = "toggle_pause_button",
+                    onClick = onTogglePause
+                )
 
                 // Refresh
-                IconButton(
-                    onClick = onManualRefresh,
-                    modifier = Modifier
-                        .size(24.dp)
-                        .clip(CircleShape)
-                        .background(SleekSurfaceVariant)
-                        .testTag("manual_refresh_button")
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Refresh,
-                        contentDescription = "Manual Refresh",
-                        tint = SleekOnBackground,
-                        modifier = Modifier.size(14.dp)
-                    )
-                }
+                CompactHeaderAction(
+                    icon = Icons.Default.Refresh,
+                    contentDescription = "Manual Refresh",
+                    testTag = "manual_refresh_button",
+                    onClick = onManualRefresh
+                )
 
                 // Info / Specs
-                IconButton(
-                    onClick = onShowSystemInfo,
-                    modifier = Modifier
-                        .size(24.dp)
-                        .clip(CircleShape)
-                        .background(SleekSurfaceVariant)
-                        .testTag("system_info_button")
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Info,
-                        contentDescription = "System Specs",
-                        tint = SleekOnBackground,
-                        modifier = Modifier.size(14.dp)
-                    )
-                }
+                CompactHeaderAction(
+                    icon = Icons.Default.Info,
+                    contentDescription = "System Specs",
+                    testTag = "system_info_button",
+                    onClick = onShowSystemInfo
+                )
             }
         }
 
@@ -707,7 +680,7 @@ fun SystemMetricsHeader(
 
                 Spacer(modifier = Modifier.height(10.dp))
                 Text(
-                    text = "TOP CPU CONSUMERS (>5%):",
+                    text = "TOP CPU CONSUMERS (>1%):",
                     style = MaterialTheme.typography.labelSmall.copy(
                         fontWeight = FontWeight.Bold,
                         fontSize = 9.sp
@@ -1272,6 +1245,26 @@ fun SystemMetricsHeader(
                 Text("Export", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 11.sp))
             }
         }
+    }
+}
+
+@Composable
+private fun CompactHeaderAction(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String,
+    testTag: String,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .size(28.dp)
+            .clip(CircleShape)
+            .background(SleekSurfaceVariant)
+            .clickable(onClick = onClick)
+            .testTag(testTag),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(icon, contentDescription, tint = SleekOnBackground, modifier = Modifier.size(14.dp))
     }
 }
 

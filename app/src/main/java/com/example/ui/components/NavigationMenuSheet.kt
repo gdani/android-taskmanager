@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.AltRoute
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.NetworkPing
@@ -66,6 +67,8 @@ fun NavigationMenuSheet(
     onShowPing: () -> Unit,
     onShowTraceroute: () -> Unit,
     onShowShell: () -> Unit,
+    onShowFileManager: () -> Unit,
+    onShowSsh: () -> Unit,
     onShowKillHistory: () -> Unit,
     onShowSystemInfo: () -> Unit,
     onShowExport: () -> Unit,
@@ -193,7 +196,7 @@ fun NavigationMenuSheet(
             // Speed Test Subprocess (Req #7)
             MenuNavigationItem(
                 icon = Icons.Default.Speed,
-                title = "Network Speed Test Subprocess",
+                title = "Network Speed Test",
                 subtitle = "Measure download/upload bandwidth, ping & jitter at edge locations",
                 isSelected = false,
                 testTag = "menu_nav_speed_test",
@@ -233,6 +236,17 @@ fun NavigationMenuSheet(
                 }
             )
 
+            Spacer(modifier = Modifier.height(6.dp))
+
+            MenuNavigationItem(
+                icon = Icons.Default.Terminal,
+                title = "SSH Connection",
+                subtitle = "Connect securely to a remote host",
+                isSelected = false,
+                testTag = "menu_nav_ssh",
+                onClick = { onDismiss(); onShowSsh() }
+            )
+
             Spacer(modifier = Modifier.height(12.dp))
             HorizontalDivider(color = SleekBorder)
             Spacer(modifier = Modifier.height(12.dp))
@@ -248,40 +262,10 @@ fun NavigationMenuSheet(
                 modifier = Modifier.padding(vertical = 4.dp)
             )
 
-            // Kill History
-            MenuNavigationItem(
-                icon = Icons.Default.History,
-                title = "Kill History",
-                subtitle = "Audit log of terminated processes and recovered RAM",
-                isSelected = false,
-                testTag = "menu_nav_history",
-                onClick = {
-                    onDismiss()
-                    onShowKillHistory()
-                }
-            )
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            // System Specs
-            MenuNavigationItem(
-                icon = Icons.Default.Info,
-                title = "System Specifications",
-                subtitle = "Hardware architecture, CPU cores, OS, and memory specs",
-                isSelected = false,
-                testTag = "menu_nav_specs",
-                onClick = {
-                    onDismiss()
-                    onShowSystemInfo()
-                }
-            )
-
-            Spacer(modifier = Modifier.height(6.dp))
-
             // Spawn Test Task
             MenuNavigationItem(
                 icon = Icons.Default.Add,
-                title = "Spawn Test Task",
+                title = "Spawn Test",
                 subtitle = "Simulate custom background CPU & RAM worker thread",
                 isSelected = false,
                 testTag = "menu_action_spawn_task",
@@ -308,10 +292,21 @@ fun NavigationMenuSheet(
 
             Spacer(modifier = Modifier.height(6.dp))
 
+            MenuNavigationItem(
+                icon = Icons.Default.Info,
+                title = "System Specifications",
+                subtitle = "Hardware architecture, CPU cores, OS, and memory specs",
+                isSelected = false,
+                testTag = "menu_nav_specs",
+                onClick = { onDismiss(); onShowSystemInfo() }
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
             // Terminate All Background Apps (Req #5)
             MenuNavigationItem(
                 icon = Icons.Default.Close,
-                title = "Terminate Suspended / Background Apps",
+                title = "Terminate Background Apps",
                 subtitle = "Instantly clean all cached, suspended and background processes",
                 isSelected = false,
                 testTag = "menu_action_terminate_bg",
@@ -323,7 +318,28 @@ fun NavigationMenuSheet(
 
             Spacer(modifier = Modifier.height(6.dp))
 
-            // Keep the shell at the end: it is an advanced tool.
+            MenuNavigationItem(
+                icon = Icons.Default.History,
+                title = "Kill History",
+                subtitle = "Audit log of terminated processes and recovered RAM",
+                isSelected = false,
+                testTag = "menu_nav_history",
+                onClick = { onDismiss(); onShowKillHistory() }
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            MenuNavigationItem(
+                icon = Icons.Default.Folder,
+                title = "File Manager",
+                subtitle = "Browse and manage shared-storage files",
+                isSelected = false,
+                testTag = "menu_nav_file_manager",
+                onClick = { onDismiss(); onShowFileManager() }
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
             MenuNavigationItem(
                 icon = Icons.Default.Terminal,
                 title = "Shell Window",
