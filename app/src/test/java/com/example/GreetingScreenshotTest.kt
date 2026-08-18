@@ -5,14 +5,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
-import com.example.data.model.ProcessCategory
-import com.example.data.model.ProcessCategoryFilter
-import com.example.data.model.ProcessInfo
-import com.example.data.model.ProcessSortColumn
-import com.example.data.model.ProcessState
 import com.example.data.model.SystemStats
-import com.example.ui.components.DetailedProcessCard
-import com.example.ui.components.ProcessFilterBar
 import com.example.ui.components.SystemMetricsHeader
 import com.example.ui.theme.MyApplicationTheme
 import com.example.ui.theme.Slate950
@@ -58,7 +51,8 @@ class GreetingScreenshotTest {
             onSpawnTestTask = {},
             onShowKillHistory = {},
             onShowExport = {},
-            onShowSystemInfo = {}
+            onShowSystemInfo = {},
+            onOpenMenu = {}
           )
         }
       }

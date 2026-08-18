@@ -88,6 +88,7 @@ fun SystemMetricsHeader(
     onShowKillHistory: () -> Unit,
     onShowExport: () -> Unit,
     onShowSystemInfo: () -> Unit,
+    onOpenMenu: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var expandedCores by remember { mutableStateOf(false) }
@@ -126,12 +127,13 @@ fun SystemMetricsHeader(
                         .size(40.dp)
                         .clip(CircleShape)
                         .background(SleekSurfaceVariant)
-                        .clickable { onShowSystemInfo() },
+                        .clickable { onOpenMenu() }
+                        .testTag("main_menu_button"),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.Menu,
-                        contentDescription = "System Menu",
+                        contentDescription = "System Navigation Menu",
                         tint = SleekOnBackground,
                         modifier = Modifier.size(22.dp)
                     )

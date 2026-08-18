@@ -39,6 +39,7 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Memory
+import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Whatshot
@@ -60,7 +61,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -69,6 +69,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.data.model.ProcessCategory
 import com.example.data.model.ProcessInfo
 import com.example.data.model.ProcessSortColumn
 import com.example.data.model.ProcessState
@@ -159,7 +160,7 @@ fun ProcessTableView(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(72.dp)
+                        .size(64.dp)
                         .clip(CircleShape)
                         .background(SleekSurfaceVariant),
                     contentAlignment = Alignment.Center
@@ -168,10 +169,10 @@ fun ProcessTableView(
                         imageVector = Icons.Default.Terminal,
                         contentDescription = null,
                         tint = SleekPrimary,
-                        modifier = Modifier.size(36.dp)
+                        modifier = Modifier.size(32.dp)
                     )
                 }
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(14.dp))
                 Text(
                     text = "No processes found",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
@@ -183,7 +184,7 @@ fun ProcessTableView(
                     style = MaterialTheme.typography.bodySmall,
                     color = SleekTextMuted
                 )
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(14.dp))
                 FilledTonalButton(
                     onClick = onClearFilters,
                     shape = RoundedCornerShape(12.dp),
@@ -213,7 +214,7 @@ fun ProcessTableView(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(if (isCompactView) 6.dp else 10.dp)
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             items(
                 items = processes,
@@ -222,34 +223,20 @@ fun ProcessTableView(
                 val isExpanded = expandedCommandPids[process.pid] == true
                 val isSelected = selectedPids.contains(process.pid)
 
-                if (isCompactView) {
-                    CompactProcessRow(
-                        process = process,
-                        isExpanded = isExpanded,
-                        isSelected = isSelected,
-                        isMultiSelectMode = isMultiSelectMode,
-                        onToggleSelect = { onToggleSelectPid(process.pid) },
-                        onToggleExpand = { expandedCommandPids[process.pid] = !isExpanded },
-                        onTerminate = { onTerminateProcess(process) },
-                        onOpenDetail = { onOpenDetail(process) },
-                        onCopyCmd = { copyToClipboard(process.cmdline, "Process ${process.pid} Command") }
-                    )
-                } else {
-                    DetailedProcessCard(
-                        process = process,
-                        isExpanded = isExpanded,
-                        isSelected = isSelected,
-                        isMultiSelectMode = isMultiSelectMode,
-                        onToggleSelect = { onToggleSelectPid(process.pid) },
-                        onToggleExpand = { expandedCommandPids[process.pid] = !isExpanded },
-                        onTerminate = { onTerminateProcess(process) },
-                        onOpenDetail = { onOpenDetail(process) },
-                        onCopyCmd = { copyToClipboard(process.cmdline, "Process ${process.pid} Command") }
-                    )
-                }
+                SleekProcessRowItem(
+                    process = process,
+                    isExpanded = isExpanded,
+                    isSelected = isSelected,
+                    isMultiSelectMode = isMultiSelectMode,
+                    onToggleSelect = { onToggleSelectPid(process.pid) },
+                    onToggleExpand = { expandedCommandPids[process.pid] = !isExpanded },
+                    onTerminate = { onTerminateProcess(process) },
+                    onOpenDetail = { onOpenDetail(process) },
+                    onCopyCmd = { copyToClipboard(process.cmdline, "Process ${process.pid} Command") }
+                )
             }
             item {
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(24.dp))
             }
         }
     }
@@ -266,18 +253,18 @@ fun TableHeaderBar(
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
-        shape = RoundedCornerShape(12.dp),
+            .padding(horizontal = 16.dp, vertical = 2.dp),
+        shape = RoundedCornerShape(10.dp),
         color = Color.Transparent
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 6.dp),
+                .padding(horizontal = 8.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (isMultiSelectMode) {
-                Spacer(modifier = Modifier.width(36.dp))
+                Spacer(modifier = Modifier.width(32.dp))
             }
 
             // PID Header
@@ -287,12 +274,12 @@ fun TableHeaderBar(
                 currentSort = sortColumn,
                 isAscending = isSortAscending,
                 onSort = onSortColumn,
-                modifier = Modifier.width(64.dp)
+                modifier = Modifier.width(54.dp)
             )
 
             // Name Header
             SortableHeaderItem(
-                title = "PROCESS / CMD",
+                title = "PROCESS / APP",
                 column = ProcessSortColumn.NAME,
                 currentSort = sortColumn,
                 isAscending = isSortAscending,
@@ -302,12 +289,12 @@ fun TableHeaderBar(
 
             // CPU Header
             SortableHeaderItem(
-                title = "CPU %",
+                title = "CPU",
                 column = ProcessSortColumn.CPU,
                 currentSort = sortColumn,
                 isAscending = isSortAscending,
                 onSort = onSortColumn,
-                modifier = Modifier.width(64.dp)
+                modifier = Modifier.width(56.dp)
             )
 
             // RAM Header
@@ -317,7 +304,7 @@ fun TableHeaderBar(
                 currentSort = sortColumn,
                 isAscending = isSortAscending,
                 onSort = onSortColumn,
-                modifier = Modifier.width(72.dp)
+                modifier = Modifier.width(62.dp)
             )
 
             // Action Header
@@ -329,7 +316,7 @@ fun TableHeaderBar(
                     letterSpacing = 0.5.sp
                 ),
                 color = SleekTextMuted,
-                modifier = Modifier.width(48.dp)
+                modifier = Modifier.width(40.dp)
             )
         }
     }
@@ -368,14 +355,14 @@ fun SortableHeaderItem(
                 imageVector = if (isAscending) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
                 contentDescription = if (isAscending) "Ascending" else "Descending",
                 tint = SleekPrimary,
-                modifier = Modifier.size(12.dp)
+                modifier = Modifier.size(11.dp)
             )
         }
     }
 }
 
 @Composable
-fun DetailedProcessCard(
+fun SleekProcessRowItem(
     process: ProcessInfo,
     isExpanded: Boolean,
     isSelected: Boolean,
@@ -390,797 +377,274 @@ fun DetailedProcessCard(
     val severity = getProcessResourceSeverity(process)
     val isHighResource = severity != ResourceSeverity.NORMAL
 
-    // Pulsing animation for critical alert badges
-    val infiniteTransition = rememberInfiniteTransition(label = "pulse_alert_${process.pid}")
-    val alertAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.6f,
-        targetValue = 1.0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(750, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "alert_pulse"
-    )
-
-    // Dynamic Card Colors based on Resource Severity
     val containerBg = when {
         isSelected -> SleekSurfaceSelected
-        severity == ResourceSeverity.CRITICAL_BOTH || severity == ResourceSeverity.CRITICAL_CPU -> Color(0xFFFFF7F6)
-        severity == ResourceSeverity.CRITICAL_RAM -> Color(0xFFF3FBFB)
-        severity == ResourceSeverity.ELEVATED_CPU -> Color(0xFFFFFBF2)
-        severity == ResourceSeverity.ELEVATED_RAM -> Color(0xFFF7FCFC)
+        severity == ResourceSeverity.CRITICAL_BOTH || severity == ResourceSeverity.CRITICAL_CPU -> Color(0xFFFFF6F5)
+        severity == ResourceSeverity.CRITICAL_RAM -> Color(0xFFF2FBFA)
+        severity == ResourceSeverity.ELEVATED_CPU -> Color(0xFFFFFDF5)
         else -> SleekSurface
     }
 
     val borderColor = when {
         isSelected -> SleekPrimaryBorder
-        severity == ResourceSeverity.CRITICAL_BOTH || severity == ResourceSeverity.CRITICAL_CPU -> SleekError.copy(alpha = 0.7f)
-        severity == ResourceSeverity.CRITICAL_RAM -> SleekMemory.copy(alpha = 0.7f)
-        severity == ResourceSeverity.ELEVATED_CPU -> SleekWarning.copy(alpha = 0.5f)
-        severity == ResourceSeverity.ELEVATED_RAM -> SleekMemory.copy(alpha = 0.4f)
+        severity == ResourceSeverity.CRITICAL_BOTH || severity == ResourceSeverity.CRITICAL_CPU -> SleekError.copy(alpha = 0.6f)
+        severity == ResourceSeverity.CRITICAL_RAM -> SleekMemory.copy(alpha = 0.6f)
+        severity == ResourceSeverity.ELEVATED_CPU -> SleekWarning.copy(alpha = 0.4f)
         else -> SleekBorderLight
     }
-
-    val borderWidth = if (isSelected || severity == ResourceSeverity.CRITICAL_CPU || severity == ResourceSeverity.CRITICAL_RAM || severity == ResourceSeverity.CRITICAL_BOTH) 1.5.dp else 1.dp
 
     Card(
         modifier = modifier
             .fillMaxWidth()
             .testTag("process_card_${process.pid}"),
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = containerBg),
-        border = androidx.compose.foundation.BorderStroke(borderWidth, borderColor),
-        elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected || isHighResource) 2.dp else 1.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Left-edge Visual Indicator Stripe for High Resource Consumption
-            if (isHighResource) {
-                val stripeColor = when (severity) {
-                    ResourceSeverity.CRITICAL_BOTH, ResourceSeverity.CRITICAL_CPU -> SleekError
-                    ResourceSeverity.CRITICAL_RAM -> SleekMemory
-                    ResourceSeverity.ELEVATED_CPU -> SleekWarning
-                    ResourceSeverity.ELEVATED_RAM -> SleekMemory.copy(alpha = 0.8f)
-                    ResourceSeverity.NORMAL -> Color.Transparent
-                }
-                Box(
-                    modifier = Modifier
-                        .width(5.dp)
-                        .height(88.dp)
-                        .clip(RoundedCornerShape(topStart = 18.dp, bottomStart = 18.dp))
-                        .background(stripeColor)
-                        .testTag("high_resource_indicator_${process.pid}")
-                )
-            }
-
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(14.dp)
-            ) {
-                // Main Top Row: Checkbox / PID / Name / High Resource Badge / State / Terminate Button
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (isMultiSelectMode) {
-                        Checkbox(
-                            checked = isSelected,
-                            onCheckedChange = { onToggleSelect() },
-                            enabled = !process.isSelf && process.isTerminable,
-                            colors = CheckboxDefaults.colors(
-                                checkedColor = SleekPrimary,
-                                uncheckedColor = SleekBorder
-                            ),
-                            modifier = Modifier.size(28.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                    }
-
-                    // PID Badge (soft surface variant rounded pill)
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(
-                                when {
-                                    severity == ResourceSeverity.CRITICAL_CPU || severity == ResourceSeverity.CRITICAL_BOTH -> SleekErrorContainer
-                                    severity == ResourceSeverity.CRITICAL_RAM -> SleekMemoryContainer
-                                    else -> SleekSurfaceVariant
-                                }
-                            )
-                            .padding(horizontal = 7.dp, vertical = 4.dp)
-                    ) {
-                        Text(
-                            text = process.pid.toString(),
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                fontFamily = FontFamily.Monospace,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 11.sp
-                            ),
-                            color = when {
-                                severity == ResourceSeverity.CRITICAL_CPU || severity == ResourceSeverity.CRITICAL_BOTH -> SleekError
-                                severity == ResourceSeverity.CRITICAL_RAM -> SleekMemory
-                                else -> SleekPrimary
-                            }
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(10.dp))
-
-                    // Title & Dynamic Resource Badges / Category / User
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable { onOpenDetail() }
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Text(
-                                text = process.displayTitle,
-                                style = MaterialTheme.typography.titleSmall.copy(
-                                    fontWeight = FontWeight.SemiBold,
-                                    fontSize = 14.sp
-                                ),
-                                color = SleekOnBackground,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-
-                            if (process.isSelf) {
-                                Text(
-                                    text = "(Self)",
-                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, fontWeight = FontWeight.Bold),
-                                    color = SleekSuccess
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(2.dp))
-
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            // User & Type
-                            Text(
-                                text = "${process.user} • ${process.type.label}",
-                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
-                                color = SleekTextMuted
-                            )
-                            // State badge
-                            ProcessStateBadge(state = process.state)
-
-                            // Dynamic High Resource Alert Badges
-                            when (severity) {
-                                ResourceSeverity.CRITICAL_BOTH -> {
-                                    Box(
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(6.dp))
-                                            .background(SleekErrorContainer.copy(alpha = alertAlpha))
-                                            .border(1.dp, SleekError.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
-                                            .padding(horizontal = 6.dp, vertical = 1.dp)
-                                            .testTag("high_resource_badge_${process.pid}")
-                                    ) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Icon(
-                                                imageVector = Icons.Default.Warning,
-                                                contentDescription = "Heavy Load",
-                                                tint = SleekError,
-                                                modifier = Modifier.size(11.dp)
-                                            )
-                                            Spacer(modifier = Modifier.width(3.dp))
-                                            Text(
-                                                text = "HEAVY LOAD",
-                                                style = MaterialTheme.typography.labelSmall.copy(
-                                                    fontSize = 9.sp,
-                                                    fontWeight = FontWeight.ExtraBold
-                                                ),
-                                                color = SleekError
-                                            )
-                                        }
-                                    }
-                                }
-                                ResourceSeverity.CRITICAL_CPU -> {
-                                    Box(
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(6.dp))
-                                            .background(SleekErrorContainer.copy(alpha = alertAlpha))
-                                            .border(1.dp, SleekError.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
-                                            .padding(horizontal = 6.dp, vertical = 1.dp)
-                                            .testTag("high_cpu_badge_${process.pid}")
-                                    ) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Icon(
-                                                imageVector = Icons.Default.Whatshot,
-                                                contentDescription = "High CPU",
-                                                tint = SleekError,
-                                                modifier = Modifier.size(11.dp)
-                                            )
-                                            Spacer(modifier = Modifier.width(3.dp))
-                                            Text(
-                                                text = "HIGH CPU",
-                                                style = MaterialTheme.typography.labelSmall.copy(
-                                                    fontSize = 9.sp,
-                                                    fontWeight = FontWeight.ExtraBold
-                                                ),
-                                                color = SleekError
-                                            )
-                                        }
-                                    }
-                                }
-                                ResourceSeverity.CRITICAL_RAM -> {
-                                    Box(
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(6.dp))
-                                            .background(SleekMemoryContainer.copy(alpha = alertAlpha))
-                                            .border(1.dp, SleekMemory.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
-                                            .padding(horizontal = 6.dp, vertical = 1.dp)
-                                            .testTag("high_ram_badge_${process.pid}")
-                                    ) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Icon(
-                                                imageVector = Icons.Default.Memory,
-                                                contentDescription = "High RAM",
-                                                tint = SleekMemory,
-                                                modifier = Modifier.size(11.dp)
-                                            )
-                                            Spacer(modifier = Modifier.width(3.dp))
-                                            Text(
-                                                text = "HIGH RAM",
-                                                style = MaterialTheme.typography.labelSmall.copy(
-                                                    fontSize = 9.sp,
-                                                    fontWeight = FontWeight.ExtraBold
-                                                ),
-                                                color = SleekMemory
-                                            )
-                                        }
-                                    }
-                                }
-                                ResourceSeverity.ELEVATED_CPU -> {
-                                    Box(
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(6.dp))
-                                            .background(SleekWarningContainer)
-                                            .padding(horizontal = 5.dp, vertical = 1.dp)
-                                            .testTag("elevated_cpu_badge_${process.pid}")
-                                    ) {
-                                        Text(
-                                            text = "CPU LOAD",
-                                            style = MaterialTheme.typography.labelSmall.copy(
-                                                fontSize = 9.sp,
-                                                fontWeight = FontWeight.Bold
-                                            ),
-                                            color = SleekWarning
-                                        )
-                                    }
-                                }
-                                ResourceSeverity.ELEVATED_RAM -> {
-                                    Box(
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(6.dp))
-                                            .background(SleekMemoryContainer.copy(alpha = 0.5f))
-                                            .padding(horizontal = 5.dp, vertical = 1.dp)
-                                            .testTag("elevated_ram_badge_${process.pid}")
-                                    ) {
-                                        Text(
-                                            text = "RAM LOAD",
-                                            style = MaterialTheme.typography.labelSmall.copy(
-                                                fontSize = 9.sp,
-                                                fontWeight = FontWeight.Bold
-                                            ),
-                                            color = SleekMemory
-                                        )
-                                    }
-                                }
-                                ResourceSeverity.NORMAL -> {}
-                            }
-                        }
-                    }
-
-                    // CPU & Memory metrics with visual proportional mini meters
-                    Column(
-                        horizontalAlignment = Alignment.End,
-                        modifier = Modifier.padding(horizontal = 6.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            if (severity == ResourceSeverity.CRITICAL_CPU || severity == ResourceSeverity.CRITICAL_BOTH) {
-                                Icon(
-                                    imageVector = Icons.Default.Whatshot,
-                                    contentDescription = "High CPU Alert",
-                                    tint = SleekError,
-                                    modifier = Modifier.size(13.dp)
-                                )
-                                Spacer(modifier = Modifier.width(2.dp))
-                            }
-                            Text(
-                                text = String.format(java.util.Locale.US, "%.1f%% CPU", process.cpuPercent),
-                                style = MaterialTheme.typography.labelMedium.copy(
-                                    fontFamily = FontFamily.Monospace,
-                                    fontWeight = FontWeight.Bold
-                                ),
-                                color = when {
-                                    process.cpuPercent >= 6.0 -> SleekError
-                                    process.cpuPercent >= 2.0 -> SleekWarning
-                                    else -> SleekOnBackground
-                                }
-                            )
-                        }
-
-                        // CPU mini meter bar
-                        Box(
-                            modifier = Modifier
-                                .width(56.dp)
-                                .height(3.dp)
-                                .clip(CircleShape)
-                                .background(SleekBorderLight)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth((process.cpuPercent / 15.0).toFloat().coerceIn(0.05f, 1f))
-                                    .fillMaxHeight()
-                                    .clip(CircleShape)
-                                    .background(
-                                        when {
-                                            process.cpuPercent >= 6.0 -> SleekError
-                                            process.cpuPercent >= 2.0 -> SleekWarning
-                                            else -> SleekPrimary
-                                        }
-                                    )
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(3.dp))
-
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            if (severity == ResourceSeverity.CRITICAL_RAM || severity == ResourceSeverity.CRITICAL_BOTH) {
-                                Icon(
-                                    imageVector = Icons.Default.Memory,
-                                    contentDescription = "High RAM Alert",
-                                    tint = SleekMemory,
-                                    modifier = Modifier.size(12.dp)
-                                )
-                                Spacer(modifier = Modifier.width(2.dp))
-                            }
-                            Text(
-                                text = process.formattedMemory,
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontFamily = FontFamily.Monospace,
-                                    fontSize = 11.sp,
-                                    fontWeight = if (process.memoryBytes >= 80L * 1024L * 1024L) FontWeight.Bold else FontWeight.Normal
-                                ),
-                                color = if (process.memoryBytes >= 80L * 1024L * 1024L) SleekMemory else SleekTextMuted
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.width(4.dp))
-
-                    // Single-Click Terminate Button (Matching HTML Sleek button: bg-[#F9DEDC] text-[#B3261E] rounded-full)
-                    if (!process.isSelf && process.isTerminable) {
-                        Box(
-                            modifier = Modifier
-                                .size(34.dp)
-                                .clip(CircleShape)
-                                .background(SleekErrorContainer)
-                                .clickable { onTerminate() }
-                                .testTag("terminate_button_${process.pid}"),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Terminate Task",
-                                tint = SleekError,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    } else {
-                        Box(
-                            modifier = Modifier
-                                .height(30.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(SleekSurfaceVariant)
-                                .padding(horizontal = 8.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = if (process.isSelf) "App" else "Locked",
-                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                                color = SleekTextSubtle
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                // Command Line Preview Banner & Expand Button (Sleek Surface Variant)
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(SleekSurfaceVariant)
-                        .clickable { onToggleExpand() }
-                        .padding(horizontal = 10.dp, vertical = 7.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(
-                        modifier = Modifier.weight(1f),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Terminal,
-                            contentDescription = "Command Line",
-                            tint = SleekPrimary,
-                            modifier = Modifier.size(15.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = process.cmdline.ifBlank { process.name },
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = 11.sp
-                            ),
-                            color = SleekOnBackground.copy(alpha = 0.85f),
-                            maxLines = if (isExpanded) 8 else 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(
-                            onClick = onCopyCmd,
-                            modifier = Modifier
-                                .size(24.dp)
-                                .testTag("copy_cmd_${process.pid}")
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.ContentCopy,
-                                contentDescription = "Copy Command Line",
-                                tint = SleekTextMuted,
-                                modifier = Modifier.size(14.dp)
-                            )
-                        }
-                        Icon(
-                            imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                            contentDescription = if (isExpanded) "Collapse" else "Expand",
-                            tint = SleekTextMuted,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                }
-
-                // Expanded Full Command Line Details
-                AnimatedVisibility(visible = isExpanded) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 8.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(SleekSurfaceSelected)
-                            .border(1.dp, SleekPrimaryBorder, RoundedCornerShape(12.dp))
-                            .padding(12.dp)
-                    ) {
-                        Text(
-                            text = "FULL COMMAND LINE & ARGS:",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 10.sp,
-                                letterSpacing = 0.8.sp
-                            ),
-                            color = SleekOnPrimaryContainer
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = process.cmdline.ifBlank { "No command line arguments found" },
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = 11.sp,
-                                lineHeight = 16.sp
-                            ),
-                            color = SleekOnPrimaryContainer
-                        )
-                        Spacer(modifier = Modifier.height(10.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "PPID: ${process.ppid} | Threads: ${process.threadsCount} | VSZ: ${process.formattedVsz}",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontFamily = FontFamily.Monospace,
-                                    fontSize = 10.sp
-                                ),
-                                color = SleekTextMuted
-                            )
-                            OutlinedButton(
-                                onClick = onOpenDetail,
-                                shape = RoundedCornerShape(8.dp),
-                                modifier = Modifier.height(28.dp)
-                            ) {
-                                Text("Full Inspector", style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp))
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun CompactProcessRow(
-    process: ProcessInfo,
-    isExpanded: Boolean,
-    isSelected: Boolean,
-    isMultiSelectMode: Boolean,
-    onToggleSelect: () -> Unit,
-    onToggleExpand: () -> Unit,
-    onTerminate: () -> Unit,
-    onOpenDetail: () -> Unit,
-    onCopyCmd: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val severity = getProcessResourceSeverity(process)
-    val isHighResource = severity != ResourceSeverity.NORMAL
-
-    val containerBg = when {
-        isSelected -> SleekSurfaceSelected
-        severity == ResourceSeverity.CRITICAL_BOTH || severity == ResourceSeverity.CRITICAL_CPU -> Color(0xFFFFF7F6)
-        severity == ResourceSeverity.CRITICAL_RAM -> Color(0xFFF3FBFB)
-        severity == ResourceSeverity.ELEVATED_CPU -> Color(0xFFFFFBF2)
-        severity == ResourceSeverity.ELEVATED_RAM -> Color(0xFFF7FCFC)
-        else -> SleekSurface
-    }
-
-    val borderColor = when {
-        isSelected -> SleekPrimaryBorder
-        severity == ResourceSeverity.CRITICAL_BOTH || severity == ResourceSeverity.CRITICAL_CPU -> SleekError.copy(alpha = 0.7f)
-        severity == ResourceSeverity.CRITICAL_RAM -> SleekMemory.copy(alpha = 0.7f)
-        severity == ResourceSeverity.ELEVATED_CPU -> SleekWarning.copy(alpha = 0.5f)
-        severity == ResourceSeverity.ELEVATED_RAM -> SleekMemory.copy(alpha = 0.4f)
-        else -> SleekBorderLight
-    }
-
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .testTag("compact_row_${process.pid}"),
         shape = RoundedCornerShape(12.dp),
-        color = containerBg,
-        border = androidx.compose.foundation.BorderStroke(
-            if (isSelected || isHighResource) 1.5.dp else 1.dp,
-            borderColor
-        )
+        colors = CardDefaults.cardColors(containerColor = containerBg),
+        border = androidx.compose.foundation.BorderStroke(if (isSelected || isHighResource) 1.5.dp else 1.dp, borderColor)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Left stripe indicator
-            if (isHighResource) {
-                val stripeColor = when (severity) {
-                    ResourceSeverity.CRITICAL_BOTH, ResourceSeverity.CRITICAL_CPU -> SleekError
-                    ResourceSeverity.CRITICAL_RAM -> SleekMemory
-                    ResourceSeverity.ELEVATED_CPU -> SleekWarning
-                    ResourceSeverity.ELEVATED_RAM -> SleekMemory.copy(alpha = 0.8f)
-                    ResourceSeverity.NORMAL -> Color.Transparent
+        Column(modifier = Modifier.fillMaxWidth()) {
+            // Main Compact Line: PID | Name + user/category | CPU% | RAM | Kill
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onToggleExpand() }
+                    .padding(horizontal = 10.dp, vertical = 7.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (isMultiSelectMode) {
+                    Checkbox(
+                        checked = isSelected,
+                        onCheckedChange = { onToggleSelect() },
+                        enabled = !process.isSelf && process.isTerminable,
+                        colors = CheckboxDefaults.colors(
+                            checkedColor = SleekPrimary,
+                            uncheckedColor = SleekBorder
+                        ),
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
                 }
+
+                // PID Badge
                 Box(
                     modifier = Modifier
-                        .width(4.dp)
-                        .height(48.dp)
-                        .clip(RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp))
-                        .background(stripeColor)
-                        .testTag("compact_high_resource_${process.pid}")
-                )
-            }
-
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 12.dp, vertical = 8.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (isMultiSelectMode) {
-                        Checkbox(
-                            checked = isSelected,
-                            onCheckedChange = { onToggleSelect() },
-                            enabled = !process.isSelf && process.isTerminable,
-                            colors = CheckboxDefaults.colors(
-                                checkedColor = SleekPrimary,
-                                uncheckedColor = SleekBorder
-                            ),
-                            modifier = Modifier.size(24.dp)
+                        .width(48.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(
+                            when {
+                                severity == ResourceSeverity.CRITICAL_CPU || severity == ResourceSeverity.CRITICAL_BOTH -> SleekErrorContainer
+                                severity == ResourceSeverity.CRITICAL_RAM -> SleekMemoryContainer
+                                else -> SleekSurfaceVariant
+                            }
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
-                    }
-
-                    // PID
+                        .padding(horizontal = 4.dp, vertical = 3.dp),
+                    contentAlignment = Alignment.Center
+                ) {
                     Text(
                         text = process.pid.toString(),
                         style = MaterialTheme.typography.labelSmall.copy(
                             fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp
                         ),
                         color = when {
                             severity == ResourceSeverity.CRITICAL_CPU || severity == ResourceSeverity.CRITICAL_BOTH -> SleekError
                             severity == ResourceSeverity.CRITICAL_RAM -> SleekMemory
                             else -> SleekPrimary
-                        },
-                        modifier = Modifier.width(52.dp)
-                    )
-
-                    // Name, Type & High Resource icon
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable { onOpenDetail() }
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = process.displayTitle,
-                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                                color = SleekOnBackground,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            if (severity == ResourceSeverity.CRITICAL_CPU || severity == ResourceSeverity.CRITICAL_BOTH) {
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Icon(
-                                    imageVector = Icons.Default.Whatshot,
-                                    contentDescription = "High CPU",
-                                    tint = SleekError,
-                                    modifier = Modifier.size(12.dp)
-                                )
-                            }
-                            if (severity == ResourceSeverity.CRITICAL_RAM) {
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Icon(
-                                    imageVector = Icons.Default.Memory,
-                                    contentDescription = "High RAM",
-                                    tint = SleekMemory,
-                                    modifier = Modifier.size(12.dp)
-                                )
-                            }
                         }
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // Title & Subtitle (User • Category • State)
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { onOpenDetail() }
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = process.displayTitle,
+                            style = MaterialTheme.typography.titleSmall.copy(
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 13.sp
+                            ),
+                            color = SleekOnBackground,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        if (process.isSelf) {
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "(Self)",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold
+                                ),
+                                color = SleekSuccess
+                            )
+                        }
+                    }
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
                         Text(
                             text = "${process.user} • ${process.type.label}",
                             style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
                             color = SleekTextMuted
                         )
+                        ProcessStateBadge(state = process.state)
                     }
+                }
 
-                    // CPU with mini meter
-                    Column(
-                        modifier = Modifier.width(58.dp),
-                        horizontalAlignment = Alignment.End
-                    ) {
-                        Text(
-                            text = String.format(java.util.Locale.US, "%.1f%%", process.cpuPercent),
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                fontFamily = FontFamily.Monospace,
-                                fontWeight = FontWeight.Bold
-                            ),
-                            color = when {
-                                process.cpuPercent >= 6.0 -> SleekError
-                                process.cpuPercent >= 2.0 -> SleekWarning
-                                else -> SleekOnBackground
-                            }
-                        )
-                        Box(
-                            modifier = Modifier
-                                .width(40.dp)
-                                .height(2.5.dp)
-                                .clip(CircleShape)
-                                .background(SleekBorderLight)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth((process.cpuPercent / 15.0).toFloat().coerceIn(0.05f, 1f))
-                                    .fillMaxHeight()
-                                    .clip(CircleShape)
-                                    .background(
-                                        when {
-                                            process.cpuPercent >= 6.0 -> SleekError
-                                            process.cpuPercent >= 2.0 -> SleekWarning
-                                            else -> SleekPrimary
-                                        }
-                                    )
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.width(6.dp))
-
-                    // RAM
+                // CPU with mini meter
+                Column(
+                    modifier = Modifier.width(54.dp),
+                    horizontalAlignment = Alignment.End
+                ) {
                     Text(
-                        text = process.formattedMemory,
+                        text = String.format(java.util.Locale.US, "%.1f%%", process.cpuPercent),
                         style = MaterialTheme.typography.labelSmall.copy(
                             fontFamily = FontFamily.Monospace,
-                            fontSize = 10.sp,
-                            fontWeight = if (process.memoryBytes >= 80L * 1024L * 1024L) FontWeight.Bold else FontWeight.Normal
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp
                         ),
-                        color = if (process.memoryBytes >= 80L * 1024L * 1024L) SleekMemory else SleekTextMuted,
-                        modifier = Modifier.width(62.dp)
+                        color = when {
+                            process.cpuPercent >= 6.0 -> SleekError
+                            process.cpuPercent >= 2.0 -> SleekWarning
+                            else -> SleekOnBackground
+                        }
                     )
-
-                    // Terminate Action
-                    if (!process.isSelf && process.isTerminable) {
+                    Box(
+                        modifier = Modifier
+                            .width(44.dp)
+                            .height(2.5.dp)
+                            .clip(CircleShape)
+                            .background(SleekBorderLight)
+                    ) {
                         Box(
                             modifier = Modifier
-                                .size(28.dp)
+                                .fillMaxWidth((process.cpuPercent / 15.0).toFloat().coerceIn(0.05f, 1f))
+                                .fillMaxHeight()
                                 .clip(CircleShape)
-                                .background(SleekErrorContainer)
-                                .clickable { onTerminate() }
-                                .testTag("compact_kill_${process.pid}"),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Kill Task",
-                                tint = SleekError,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    } else {
-                        Spacer(modifier = Modifier.width(28.dp))
-                    }
-
-                    Spacer(modifier = Modifier.width(4.dp))
-
-                    // Expand command line
-                    IconButton(
-                        onClick = onToggleExpand,
-                        modifier = Modifier.size(24.dp)
-                    ) {
-                        Icon(
-                            imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                            contentDescription = "Expand Command",
-                            tint = SleekTextMuted,
-                            modifier = Modifier.size(14.dp)
+                                .background(
+                                    when {
+                                        process.cpuPercent >= 6.0 -> SleekError
+                                        process.cpuPercent >= 2.0 -> SleekWarning
+                                        else -> SleekPrimary
+                                    }
+                                )
                         )
                     }
                 }
 
-                AnimatedVisibility(visible = isExpanded) {
-                    Row(
+                Spacer(modifier = Modifier.width(6.dp))
+
+                // RAM
+                Text(
+                    text = process.formattedMemory,
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 11.sp,
+                        fontWeight = if (process.memoryBytes >= 80L * 1024L * 1024L) FontWeight.Bold else FontWeight.Normal
+                    ),
+                    color = if (process.memoryBytes >= 80L * 1024L * 1024L) SleekMemory else SleekTextMuted,
+                    modifier = Modifier.width(60.dp)
+                )
+
+                Spacer(modifier = Modifier.width(4.dp))
+
+                // Action Terminate Button
+                if (!process.isSelf && process.isTerminable) {
+                    Box(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 4.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(SleekSurfaceVariant)
-                            .padding(6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+                            .size(30.dp)
+                            .clip(CircleShape)
+                            .background(SleekErrorContainer)
+                            .clickable { onTerminate() }
+                            .testTag("terminate_button_${process.pid}"),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Terminate Task",
+                            tint = SleekError,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .size(30.dp)
+                            .clip(CircleShape)
+                            .background(SleekSurfaceVariant),
+                        contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = process.cmdline.ifBlank { process.name },
+                            text = "🔒",
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp)
+                        )
+                    }
+                }
+            }
+
+            // Expandable Command Line & Actions Drawer
+            AnimatedVisibility(visible = isExpanded) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(SleekSurfaceVariant.copy(alpha = 0.5f))
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "CMD: ${process.cmdline.ifBlank { process.name }}",
                             style = MaterialTheme.typography.bodySmall.copy(
                                 fontFamily = FontFamily.Monospace,
                                 fontSize = 10.sp
                             ),
-                            color = SleekOnBackground.copy(alpha = 0.85f),
+                            color = SleekOnBackground.copy(alpha = 0.9f),
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f)
                         )
-                        IconButton(
-                            onClick = onCopyCmd,
-                            modifier = Modifier.size(20.dp)
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.ContentCopy,
-                                contentDescription = "Copy",
-                                tint = SleekTextMuted,
-                                modifier = Modifier.size(12.dp)
-                            )
+                            IconButton(
+                                onClick = onCopyCmd,
+                                modifier = Modifier
+                                    .size(28.dp)
+                                    .testTag("copy_cmd_${process.pid}")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ContentCopy,
+                                    contentDescription = "Copy Command",
+                                    tint = SleekTextMuted,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            }
+                            IconButton(
+                                onClick = onOpenDetail,
+                                modifier = Modifier
+                                    .size(28.dp)
+                                    .testTag("open_detail_${process.pid}")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.OpenInNew,
+                                    contentDescription = "Full Inspector",
+                                    tint = SleekPrimary,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            }
                         }
                     }
                 }
@@ -1191,26 +655,30 @@ fun CompactProcessRow(
 
 @Composable
 fun ProcessStateBadge(state: ProcessState, modifier: Modifier = Modifier) {
-    val (bgColor, textColor) = when (state) {
-        ProcessState.RUNNING -> Pair(SleekSuccessContainer, SleekSuccess)
-        ProcessState.SLEEPING -> Pair(SleekSurfaceVariant, SleekTextMuted)
-        ProcessState.DISK_SLEEP -> Pair(SleekWarningContainer, SleekWarning)
-        ProcessState.ZOMBIE -> Pair(SleekErrorContainer, SleekError)
-        ProcessState.STOPPED -> Pair(SleekErrorContainer, SleekError)
-        else -> Pair(SleekSurfaceVariant, SleekTextSubtle)
+    val (bg, textColor, label) = when (state) {
+        ProcessState.RUNNING -> Triple(SleekSuccessContainer, SleekSuccess, "R")
+        ProcessState.SLEEPING -> Triple(SleekSurfaceVariant, SleekTextMuted, "S")
+        ProcessState.DISK_SLEEP -> Triple(SleekWarningContainer, SleekWarning, "D")
+        ProcessState.ZOMBIE -> Triple(SleekErrorContainer, SleekError, "Z")
+        ProcessState.STOPPED -> Triple(SleekErrorContainer, SleekError, "T")
+        ProcessState.PAGING -> Triple(SleekWarningContainer, SleekWarning, "W")
+        ProcessState.IDLE -> Triple(SleekSurfaceVariant, SleekTextMuted, "I")
+        ProcessState.UNKNOWN -> Triple(SleekSurfaceVariant, SleekTextMuted, "?")
     }
 
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(4.dp))
-            .background(bgColor)
-            .padding(horizontal = 5.dp, vertical = 1.dp)
+            .background(bg)
+            .padding(horizontal = 4.dp, vertical = 1.dp),
+        contentAlignment = Alignment.Center
     ) {
         Text(
-            text = state.name,
+            text = label,
             style = MaterialTheme.typography.labelSmall.copy(
                 fontSize = 9.sp,
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace
             ),
             color = textColor
         )

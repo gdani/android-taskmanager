@@ -93,8 +93,6 @@ fun UsageTrendChart(
     onSelectTimeWindow: (Int) -> Unit,
     selectedMetricFilter: ChartMetricFilter,
     onSelectMetricFilter: (ChartMetricFilter) -> Unit,
-    isExpanded: Boolean,
-    onToggleExpand: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var scrubbedPoint by remember { mutableStateOf<MetricPoint?>(null) }
@@ -144,7 +142,7 @@ fun UsageTrendChart(
             .padding(14.dp)
             .testTag("usage_trend_chart")
     ) {
-        // Top Header: Title, Live indicator, and Expand / Collapse Button
+        // Top Header: Title, Live indicator, and Time Window Selector
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -220,35 +218,18 @@ fun UsageTrendChart(
                         )
                     }
                 }
-
-                IconButton(
-                    onClick = onToggleExpand,
-                    modifier = Modifier
-                        .size(30.dp)
-                        .clip(CircleShape)
-                        .background(SleekSurface)
-                        .testTag("toggle_chart_expand_button")
-                ) {
-                    Icon(
-                        imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                        contentDescription = if (isExpanded) "Collapse Chart" else "Expand Chart",
-                        tint = SleekOnBackground,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
             }
         }
 
-        AnimatedVisibility(visible = isExpanded) {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Spacer(modifier = Modifier.height(10.dp))
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Spacer(modifier = Modifier.height(10.dp))
 
-                // Filter Row (Both, CPU only, RAM only) + Legend
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+            // Filter Row (Both, CPU only, RAM only) + Legend
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                     // Metric Filter Buttons
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         ChartMetricFilter.values().forEach { filter ->
@@ -723,4 +704,3 @@ fun UsageTrendChart(
             }
         }
     }
-}
