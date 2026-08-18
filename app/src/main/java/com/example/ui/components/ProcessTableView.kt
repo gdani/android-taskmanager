@@ -5,14 +5,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -33,16 +26,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Terminal
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -51,11 +38,9 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -78,14 +63,12 @@ import com.example.ui.theme.SleekBorderLight
 import com.example.ui.theme.SleekError
 import com.example.ui.theme.SleekErrorContainer
 import com.example.ui.theme.SleekMemory
-import com.example.ui.theme.SleekMemoryBorder
 import com.example.ui.theme.SleekMemoryContainer
 import com.example.ui.theme.SleekOnBackground
 import com.example.ui.theme.SleekOnPrimaryContainer
 import com.example.ui.theme.SleekPrimary
 import com.example.ui.theme.SleekPrimaryBorder
 import com.example.ui.theme.SleekPrimaryContainer
-import com.example.ui.theme.SleekSecondaryContainer
 import com.example.ui.theme.SleekSuccess
 import com.example.ui.theme.SleekSuccessContainer
 import com.example.ui.theme.SleekSurface
@@ -160,7 +143,7 @@ fun ProcessTableView(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(64.dp)
+                        .size(56.dp)
                         .clip(CircleShape)
                         .background(SleekSurfaceVariant),
                     contentAlignment = Alignment.Center
@@ -169,10 +152,10 @@ fun ProcessTableView(
                         imageVector = Icons.Default.Terminal,
                         contentDescription = null,
                         tint = SleekPrimary,
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(28.dp)
                     )
                 }
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(12.dp))
                 Text(
                     text = "No processes found",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
@@ -184,10 +167,10 @@ fun ProcessTableView(
                     style = MaterialTheme.typography.bodySmall,
                     color = SleekTextMuted
                 )
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(12.dp))
                 FilledTonalButton(
                     onClick = onClearFilters,
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(10.dp),
                     colors = androidx.compose.material3.ButtonDefaults.filledTonalButtonColors(
                         containerColor = SleekPrimaryContainer,
                         contentColor = SleekOnPrimaryContainer
@@ -201,20 +184,21 @@ fun ProcessTableView(
     }
 
     Column(modifier = modifier.fillMaxSize()) {
-        // Table Column Headers (Sortable)
+        // Column Headers (Sortable)
         TableHeaderBar(
             sortColumn = sortColumn,
             isSortAscending = isSortAscending,
             onSortColumn = onSortColumn,
-            isMultiSelectMode = isMultiSelectMode
+            isMultiSelectMode = isMultiSelectMode,
+            isCompactView = isCompactView
         )
 
-        // Process List
+        // Process List (Adaptive spacing and card sizing)
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+                .padding(horizontal = if (isCompactView) 10.dp else 14.dp),
+            verticalArrangement = Arrangement.spacedBy(if (isCompactView) 3.dp else 8.dp)
         ) {
             items(
                 items = processes,
@@ -228,6 +212,7 @@ fun ProcessTableView(
                     isExpanded = isExpanded,
                     isSelected = isSelected,
                     isMultiSelectMode = isMultiSelectMode,
+                    isCompactView = isCompactView,
                     onToggleSelect = { onToggleSelectPid(process.pid) },
                     onToggleExpand = { expandedCommandPids[process.pid] = !isExpanded },
                     onTerminate = { onTerminateProcess(process) },
@@ -236,7 +221,7 @@ fun ProcessTableView(
                 )
             }
             item {
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(20.dp))
             }
         }
     }
@@ -248,23 +233,24 @@ fun TableHeaderBar(
     isSortAscending: Boolean,
     onSortColumn: (ProcessSortColumn) -> Unit,
     isMultiSelectMode: Boolean,
+    isCompactView: Boolean,
     modifier: Modifier = Modifier
 ) {
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 2.dp),
-        shape = RoundedCornerShape(10.dp),
+            .padding(horizontal = if (isCompactView) 12.dp else 16.dp, vertical = 1.dp),
+        shape = RoundedCornerShape(8.dp),
         color = Color.Transparent
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 4.dp),
+                .padding(horizontal = 6.dp, vertical = 2.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (isMultiSelectMode) {
-                Spacer(modifier = Modifier.width(32.dp))
+                Spacer(modifier = Modifier.width(28.dp))
             }
 
             // PID Header
@@ -274,12 +260,12 @@ fun TableHeaderBar(
                 currentSort = sortColumn,
                 isAscending = isSortAscending,
                 onSort = onSortColumn,
-                modifier = Modifier.width(54.dp)
+                modifier = Modifier.width(if (isCompactView) 46.dp else 52.dp)
             )
 
             // Name Header
             SortableHeaderItem(
-                title = "PROCESS / APP",
+                title = "PROCESS",
                 column = ProcessSortColumn.NAME,
                 currentSort = sortColumn,
                 isAscending = isSortAscending,
@@ -294,7 +280,7 @@ fun TableHeaderBar(
                 currentSort = sortColumn,
                 isAscending = isSortAscending,
                 onSort = onSortColumn,
-                modifier = Modifier.width(56.dp)
+                modifier = Modifier.width(if (isCompactView) 48.dp else 56.dp)
             )
 
             // RAM Header
@@ -304,19 +290,19 @@ fun TableHeaderBar(
                 currentSort = sortColumn,
                 isAscending = isSortAscending,
                 onSort = onSortColumn,
-                modifier = Modifier.width(62.dp)
+                modifier = Modifier.width(if (isCompactView) 54.dp else 62.dp)
             )
 
             // Action Header
             Text(
-                text = "ACTION",
+                text = "ACT",
                 style = MaterialTheme.typography.labelSmall.copy(
                     fontWeight = FontWeight.Bold,
-                    fontSize = 10.sp,
+                    fontSize = 9.sp,
                     letterSpacing = 0.5.sp
                 ),
                 color = SleekTextMuted,
-                modifier = Modifier.width(40.dp)
+                modifier = Modifier.width(if (isCompactView) 28.dp else 34.dp)
             )
         }
     }
@@ -342,7 +328,7 @@ fun SortableHeaderItem(
             text = title,
             style = MaterialTheme.typography.labelSmall.copy(
                 fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Bold,
-                fontSize = 10.sp,
+                fontSize = 9.sp,
                 letterSpacing = 0.5.sp
             ),
             color = if (isSelected) SleekPrimary else SleekTextMuted,
@@ -350,12 +336,12 @@ fun SortableHeaderItem(
             overflow = TextOverflow.Ellipsis
         )
         if (isSelected) {
-            Spacer(modifier = Modifier.width(2.dp))
+            Spacer(modifier = Modifier.width(1.dp))
             Icon(
                 imageVector = if (isAscending) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
                 contentDescription = if (isAscending) "Ascending" else "Descending",
                 tint = SleekPrimary,
-                modifier = Modifier.size(11.dp)
+                modifier = Modifier.size(10.dp)
             )
         }
     }
@@ -367,6 +353,7 @@ fun SleekProcessRowItem(
     isExpanded: Boolean,
     isSelected: Boolean,
     isMultiSelectMode: Boolean,
+    isCompactView: Boolean,
     onToggleSelect: () -> Unit,
     onToggleExpand: () -> Unit,
     onTerminate: () -> Unit,
@@ -379,17 +366,17 @@ fun SleekProcessRowItem(
 
     val containerBg = when {
         isSelected -> SleekSurfaceSelected
-        severity == ResourceSeverity.CRITICAL_BOTH || severity == ResourceSeverity.CRITICAL_CPU -> Color(0xFFFFF6F5)
-        severity == ResourceSeverity.CRITICAL_RAM -> Color(0xFFF2FBFA)
-        severity == ResourceSeverity.ELEVATED_CPU -> Color(0xFFFFFDF5)
+        severity == ResourceSeverity.CRITICAL_BOTH || severity == ResourceSeverity.CRITICAL_CPU -> Color(0xFFFFF5F5)
+        severity == ResourceSeverity.CRITICAL_RAM -> Color(0xFFF0FAF9)
+        severity == ResourceSeverity.ELEVATED_CPU -> Color(0xFFFFFDF2)
         else -> SleekSurface
     }
 
     val borderColor = when {
         isSelected -> SleekPrimaryBorder
-        severity == ResourceSeverity.CRITICAL_BOTH || severity == ResourceSeverity.CRITICAL_CPU -> SleekError.copy(alpha = 0.6f)
-        severity == ResourceSeverity.CRITICAL_RAM -> SleekMemory.copy(alpha = 0.6f)
-        severity == ResourceSeverity.ELEVATED_CPU -> SleekWarning.copy(alpha = 0.4f)
+        severity == ResourceSeverity.CRITICAL_BOTH || severity == ResourceSeverity.CRITICAL_CPU -> SleekError.copy(alpha = 0.5f)
+        severity == ResourceSeverity.CRITICAL_RAM -> SleekMemory.copy(alpha = 0.5f)
+        severity == ResourceSeverity.ELEVATED_CPU -> SleekWarning.copy(alpha = 0.3f)
         else -> SleekBorderLight
     }
 
@@ -397,17 +384,23 @@ fun SleekProcessRowItem(
         modifier = modifier
             .fillMaxWidth()
             .testTag("process_card_${process.pid}"),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(if (isCompactView) 6.dp else 12.dp),
         colors = CardDefaults.cardColors(containerColor = containerBg),
-        border = androidx.compose.foundation.BorderStroke(if (isSelected || isHighResource) 1.5.dp else 1.dp, borderColor)
+        border = androidx.compose.foundation.BorderStroke(
+            if (isSelected || isHighResource) 1.5.dp else 1.dp,
+            borderColor
+        )
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
-            // Main Compact Line: PID | Name + user/category | CPU% | RAM | Kill
+            // Main Line: Changes vertical padding and layout structure depending on isCompactView
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable { onToggleExpand() }
-                    .padding(horizontal = 10.dp, vertical = 7.dp),
+                    .padding(
+                        horizontal = if (isCompactView) 6.dp else 10.dp,
+                        vertical = if (isCompactView) 3.dp else 8.dp
+                    ),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (isMultiSelectMode) {
@@ -419,16 +412,16 @@ fun SleekProcessRowItem(
                             checkedColor = SleekPrimary,
                             uncheckedColor = SleekBorder
                         ),
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(if (isCompactView) 20.dp else 24.dp)
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Spacer(modifier = Modifier.width(2.dp))
                 }
 
                 // PID Badge
                 Box(
                     modifier = Modifier
-                        .width(48.dp)
-                        .clip(RoundedCornerShape(6.dp))
+                        .width(if (isCompactView) 42.dp else 48.dp)
+                        .clip(RoundedCornerShape(4.dp))
                         .background(
                             when {
                                 severity == ResourceSeverity.CRITICAL_CPU || severity == ResourceSeverity.CRITICAL_BOTH -> SleekErrorContainer
@@ -436,7 +429,10 @@ fun SleekProcessRowItem(
                                 else -> SleekSurfaceVariant
                             }
                         )
-                        .padding(horizontal = 4.dp, vertical = 3.dp),
+                        .padding(
+                            horizontal = if (isCompactView) 2.dp else 4.dp,
+                            vertical = if (isCompactView) 1.dp else 3.dp
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -444,7 +440,7 @@ fun SleekProcessRowItem(
                         style = MaterialTheme.typography.labelSmall.copy(
                             fontFamily = FontFamily.Monospace,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp
+                            fontSize = if (isCompactView) 10.sp else 11.sp
                         ),
                         color = when {
                             severity == ResourceSeverity.CRITICAL_CPU || severity == ResourceSeverity.CRITICAL_BOTH -> SleekError
@@ -454,9 +450,9 @@ fun SleekProcessRowItem(
                     )
                 }
 
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(if (isCompactView) 6.dp else 8.dp))
 
-                // Title & Subtitle (User • Category • State)
+                // Title & Details
                 Column(
                     modifier = Modifier
                         .weight(1f)
@@ -467,18 +463,18 @@ fun SleekProcessRowItem(
                             text = process.displayTitle,
                             style = MaterialTheme.typography.titleSmall.copy(
                                 fontWeight = FontWeight.SemiBold,
-                                fontSize = 13.sp
+                                fontSize = if (isCompactView) 11.sp else 13.sp
                             ),
                             color = SleekOnBackground,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
                         if (process.isSelf) {
-                            Spacer(modifier = Modifier.width(4.dp))
+                            Spacer(modifier = Modifier.width(3.dp))
                             Text(
                                 text = "(Self)",
                                 style = MaterialTheme.typography.labelSmall.copy(
-                                    fontSize = 9.sp,
+                                    fontSize = 8.sp,
                                     fontWeight = FontWeight.Bold
                                 ),
                                 color = SleekSuccess
@@ -486,22 +482,37 @@ fun SleekProcessRowItem(
                         }
                     }
 
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Text(
-                            text = "${process.user} • ${process.type.label}",
-                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                            color = SleekTextMuted
-                        )
-                        ProcessStateBadge(state = process.state)
+                    // Show secondary line in both or slim version in compact view
+                    if (!isCompactView) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text = "${process.user} • ${process.type.label}",
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                color = SleekTextMuted
+                            )
+                            ProcessStateBadge(state = process.state)
+                        }
+                    } else {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(3.dp)
+                        ) {
+                            Text(
+                                text = process.user,
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                                color = SleekTextSubtle
+                            )
+                            ProcessStateBadge(state = process.state)
+                        }
                     }
                 }
 
-                // CPU with mini meter
+                // CPU
                 Column(
-                    modifier = Modifier.width(54.dp),
+                    modifier = Modifier.width(if (isCompactView) 46.dp else 54.dp),
                     horizontalAlignment = Alignment.End
                 ) {
                     Text(
@@ -509,7 +520,7 @@ fun SleekProcessRowItem(
                         style = MaterialTheme.typography.labelSmall.copy(
                             fontFamily = FontFamily.Monospace,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp
+                            fontSize = if (isCompactView) 10.sp else 11.sp
                         ),
                         color = when {
                             process.cpuPercent >= 6.0 -> SleekError
@@ -517,50 +528,52 @@ fun SleekProcessRowItem(
                             else -> SleekOnBackground
                         }
                     )
-                    Box(
-                        modifier = Modifier
-                            .width(44.dp)
-                            .height(2.5.dp)
-                            .clip(CircleShape)
-                            .background(SleekBorderLight)
-                    ) {
+                    if (!isCompactView) {
                         Box(
                             modifier = Modifier
-                                .fillMaxWidth((process.cpuPercent / 15.0).toFloat().coerceIn(0.05f, 1f))
-                                .fillMaxHeight()
+                                .width(44.dp)
+                                .height(2.5.dp)
                                 .clip(CircleShape)
-                                .background(
-                                    when {
-                                        process.cpuPercent >= 6.0 -> SleekError
-                                        process.cpuPercent >= 2.0 -> SleekWarning
-                                        else -> SleekPrimary
-                                    }
-                                )
-                        )
+                                .background(SleekBorderLight)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth((process.cpuPercent / 15.0).toFloat().coerceIn(0.05f, 1f))
+                                    .fillMaxHeight()
+                                    .clip(CircleShape)
+                                    .background(
+                                        when {
+                                            process.cpuPercent >= 6.0 -> SleekError
+                                            process.cpuPercent >= 2.0 -> SleekWarning
+                                            else -> SleekPrimary
+                                        }
+                                    )
+                            )
+                        }
                     }
                 }
 
-                Spacer(modifier = Modifier.width(6.dp))
+                Spacer(modifier = Modifier.width(if (isCompactView) 4.dp else 6.dp))
 
                 // RAM
                 Text(
                     text = process.formattedMemory,
                     style = MaterialTheme.typography.labelSmall.copy(
                         fontFamily = FontFamily.Monospace,
-                        fontSize = 11.sp,
+                        fontSize = if (isCompactView) 10.sp else 11.sp,
                         fontWeight = if (process.memoryBytes >= 80L * 1024L * 1024L) FontWeight.Bold else FontWeight.Normal
                     ),
                     color = if (process.memoryBytes >= 80L * 1024L * 1024L) SleekMemory else SleekTextMuted,
-                    modifier = Modifier.width(60.dp)
+                    modifier = Modifier.width(if (isCompactView) 52.dp else 60.dp)
                 )
 
-                Spacer(modifier = Modifier.width(4.dp))
+                Spacer(modifier = Modifier.width(if (isCompactView) 2.dp else 4.dp))
 
                 // Action Terminate Button
                 if (!process.isSelf && process.isTerminable) {
                     Box(
                         modifier = Modifier
-                            .size(30.dp)
+                            .size(if (isCompactView) 24.dp else 30.dp)
                             .clip(CircleShape)
                             .background(SleekErrorContainer)
                             .clickable { onTerminate() }
@@ -571,20 +584,20 @@ fun SleekProcessRowItem(
                             imageVector = Icons.Default.Close,
                             contentDescription = "Terminate Task",
                             tint = SleekError,
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(if (isCompactView) 12.dp else 16.dp)
                         )
                     }
                 } else {
                     Box(
                         modifier = Modifier
-                            .size(30.dp)
+                            .size(if (isCompactView) 24.dp else 30.dp)
                             .clip(CircleShape)
                             .background(SleekSurfaceVariant),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = "🔒",
-                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp)
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = if (isCompactView) 8.sp else 10.sp)
                         )
                     }
                 }
@@ -596,7 +609,7 @@ fun SleekProcessRowItem(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(SleekSurfaceVariant.copy(alpha = 0.5f))
-                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -622,27 +635,27 @@ fun SleekProcessRowItem(
                             IconButton(
                                 onClick = onCopyCmd,
                                 modifier = Modifier
-                                    .size(28.dp)
+                                    .size(26.dp)
                                     .testTag("copy_cmd_${process.pid}")
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.ContentCopy,
                                     contentDescription = "Copy Command",
                                     tint = SleekTextMuted,
-                                    modifier = Modifier.size(14.dp)
+                                    modifier = Modifier.size(13.dp)
                                 )
                             }
                             IconButton(
                                 onClick = onOpenDetail,
                                 modifier = Modifier
-                                    .size(28.dp)
+                                    .size(26.dp)
                                     .testTag("open_detail_${process.pid}")
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.OpenInNew,
                                     contentDescription = "Full Inspector",
                                     tint = SleekPrimary,
-                                    modifier = Modifier.size(14.dp)
+                                    modifier = Modifier.size(13.dp)
                                 )
                             }
                         }
@@ -668,15 +681,15 @@ fun ProcessStateBadge(state: ProcessState, modifier: Modifier = Modifier) {
 
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(4.dp))
+            .clip(RoundedCornerShape(3.dp))
             .background(bg)
-            .padding(horizontal = 4.dp, vertical = 1.dp),
+            .padding(horizontal = 3.dp, vertical = 0.5.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall.copy(
-                fontSize = 9.sp,
+                fontSize = 8.sp,
                 fontWeight = FontWeight.Bold,
                 fontFamily = FontFamily.Monospace
             ),

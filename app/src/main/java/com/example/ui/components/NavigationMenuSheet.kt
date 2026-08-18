@@ -13,27 +13,27 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Analytics
+import androidx.compose.material.icons.filled.AltRoute
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.NetworkPing
 import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material.icons.filled.Speed
-import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -46,28 +46,26 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ui.theme.SleekBackground
 import com.example.ui.theme.SleekBorder
 import com.example.ui.theme.SleekBorderLight
-import com.example.ui.theme.SleekError
-import com.example.ui.theme.SleekErrorContainer
 import com.example.ui.theme.SleekOnBackground
-import com.example.ui.theme.SleekOnPrimaryContainer
 import com.example.ui.theme.SleekPrimary
 import com.example.ui.theme.SleekPrimaryBorder
 import com.example.ui.theme.SleekPrimaryContainer
-import com.example.ui.theme.SleekSecondaryContainer
 import com.example.ui.theme.SleekSurface
-import com.example.ui.theme.SleekSurfaceSelected
 import com.example.ui.theme.SleekSurfaceVariant
 import com.example.ui.theme.SleekTextMuted
-import com.example.ui.theme.SleekTextSubtle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NavigationMenuSheet(
     currentTabIndex: Int,
     onSelectTab: (Int) -> Unit,
+    onShowSpeedTest: () -> Unit,
+    onShowPing: () -> Unit,
+    onShowTraceroute: () -> Unit,
+    onShowKillHistory: () -> Unit,
+    onShowSystemInfo: () -> Unit,
     onShowExport: () -> Unit,
     onSpawnTestTask: () -> Unit,
     onDismiss: () -> Unit,
@@ -96,19 +94,20 @@ fun NavigationMenuSheet(
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp)
                 .padding(bottom = 32.dp)
+                .verticalScroll(rememberScrollState())
                 .testTag("navigation_menu_sheet")
         ) {
             // Sheet Header
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 16.dp),
+                    .padding(bottom = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
                     Text(
-                        text = "ProcMaster Menu",
+                        text = "System Diagnostics Menu",
                         style = MaterialTheme.typography.titleLarge.copy(
                             fontWeight = FontWeight.Bold,
                             fontSize = 20.sp
@@ -116,7 +115,7 @@ fun NavigationMenuSheet(
                         color = SleekOnBackground
                     )
                     Text(
-                        text = "Navigate views & quick actions",
+                        text = "System navigation, network tools & process management",
                         style = MaterialTheme.typography.bodySmall,
                         color = SleekTextMuted
                     )
@@ -135,23 +134,23 @@ fun NavigationMenuSheet(
             }
 
             Text(
-                text = "MAIN VIEWS",
+                text = "PRIMARY VIEWS",
                 style = MaterialTheme.typography.labelSmall.copy(
                     fontWeight = FontWeight.Bold,
                     fontSize = 11.sp,
                     letterSpacing = 1.sp
                 ),
                 color = SleekTextMuted,
-                modifier = Modifier.padding(vertical = 6.dp)
+                modifier = Modifier.padding(vertical = 4.dp)
             )
 
-            // Tab 0: Processes
+            // Tab 0: Trends (Primary First Tab - Req #2)
             MenuNavigationItem(
-                icon = Icons.Default.Dashboard,
-                title = "Processes",
-                subtitle = "Active tasks, filter system/background, search & kill",
+                icon = Icons.Default.ShowChart,
+                title = "Resource & Network Trends",
+                subtitle = "Live CPU, RAM and network traffic trajectory telemetry",
                 isSelected = currentTabIndex == 0,
-                testTag = "menu_nav_processes",
+                testTag = "menu_nav_trends",
                 onClick = {
                     onSelectTab(0)
                     onDismiss()
@@ -160,69 +159,127 @@ fun NavigationMenuSheet(
 
             Spacer(modifier = Modifier.height(6.dp))
 
-            // Tab 1: Trends
+            // Tab 1: Processes (Second Tab - Req #2)
             MenuNavigationItem(
-                icon = Icons.Default.ShowChart,
-                title = "Resource Trends",
-                subtitle = "Real-time CPU & RAM trajectory graphs & metrics",
+                icon = Icons.Default.Dashboard,
+                title = "Running Processes",
+                subtitle = "Tasks, services, background daemons, storage analysis & signals",
                 isSelected = currentTabIndex == 1,
-                testTag = "menu_nav_trends",
+                testTag = "menu_nav_processes",
                 onClick = {
                     onSelectTab(1)
                     onDismiss()
                 }
             )
 
-            Spacer(modifier = Modifier.height(6.dp))
-
-            // Tab 2: History
-            MenuNavigationItem(
-                icon = Icons.Default.History,
-                title = "Kill History",
-                subtitle = "Log of terminated processes and freed memory",
-                isSelected = currentTabIndex == 2,
-                testTag = "menu_nav_history",
-                onClick = {
-                    onSelectTab(2)
-                    onDismiss()
-                }
-            )
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            // Tab 3: System Specs
-            MenuNavigationItem(
-                icon = Icons.Default.Info,
-                title = "System Specifications",
-                subtitle = "Hardware architecture, CPU cores, OS, and memory specs",
-                isSelected = currentTabIndex == 3,
-                testTag = "menu_nav_specs",
-                onClick = {
-                    onSelectTab(3)
-                    onDismiss()
-                }
-            )
-
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(12.dp))
             HorizontalDivider(color = SleekBorder)
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             Text(
-                text = "UTILITIES & ACTIONS",
+                text = "NETWORK DIAGNOSTIC UTILITIES",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 11.sp,
+                    letterSpacing = 1.sp
+                ),
+                color = SleekPrimary,
+                modifier = Modifier.padding(vertical = 4.dp)
+            )
+
+            // Speed Test Subprocess (Req #7)
+            MenuNavigationItem(
+                icon = Icons.Default.Speed,
+                title = "Network Speed Test Subprocess",
+                subtitle = "Measure download/upload bandwidth, ping & jitter at edge locations",
+                isSelected = false,
+                testTag = "menu_nav_speed_test",
+                onClick = {
+                    onDismiss()
+                    onShowSpeedTest()
+                }
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // Ping Tool (Req #8)
+            MenuNavigationItem(
+                icon = Icons.Default.NetworkPing,
+                title = "Ping Utility",
+                subtitle = "ICMP echo latency, packet loss test & live response console",
+                isSelected = false,
+                testTag = "menu_nav_ping",
+                onClick = {
+                    onDismiss()
+                    onShowPing()
+                }
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // Traceroute Tool (Req #9)
+            MenuNavigationItem(
+                icon = Icons.Default.AltRoute,
+                title = "Traceroute Utility",
+                subtitle = "Probe multi-hop transit network path and round-trip delays",
+                isSelected = false,
+                testTag = "menu_nav_traceroute",
+                onClick = {
+                    onDismiss()
+                    onShowTraceroute()
+                }
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+            HorizontalDivider(color = SleekBorder)
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = "SYSTEM TOOLS & LOGS",
                 style = MaterialTheme.typography.labelSmall.copy(
                     fontWeight = FontWeight.Bold,
                     fontSize = 11.sp,
                     letterSpacing = 1.sp
                 ),
                 color = SleekTextMuted,
-                modifier = Modifier.padding(vertical = 6.dp)
+                modifier = Modifier.padding(vertical = 4.dp)
             )
+
+            // Kill History
+            MenuNavigationItem(
+                icon = Icons.Default.History,
+                title = "Kill History",
+                subtitle = "Audit log of terminated processes and recovered RAM",
+                isSelected = false,
+                testTag = "menu_nav_history",
+                onClick = {
+                    onDismiss()
+                    onShowKillHistory()
+                }
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // System Specs
+            MenuNavigationItem(
+                icon = Icons.Default.Info,
+                title = "System Specifications",
+                subtitle = "Hardware architecture, CPU cores, OS, and memory specs",
+                isSelected = false,
+                testTag = "menu_nav_specs",
+                onClick = {
+                    onDismiss()
+                    onShowSystemInfo()
+                }
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
 
             // Spawn Test Task
             MenuNavigationItem(
-                icon = Icons.Default.Speed,
+                icon = Icons.Default.Add,
                 title = "Spawn Test Task",
-                subtitle = "Simulate custom background CPU & RAM worker",
+                subtitle = "Simulate custom background CPU & RAM worker thread",
                 isSelected = false,
                 testTag = "menu_action_spawn_task",
                 onClick = {
@@ -270,13 +327,13 @@ fun MenuNavigationItem(
             .background(bg)
             .border(1.dp, borderColor, RoundedCornerShape(14.dp))
             .clickable { onClick() }
-            .padding(horizontal = 14.dp, vertical = 12.dp)
+            .padding(horizontal = 14.dp, vertical = 10.dp)
             .testTag(testTag),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
-                .size(40.dp)
+                .size(38.dp)
                 .clip(CircleShape)
                 .background(if (isSelected) SleekPrimary.copy(alpha = 0.15f) else SleekSurface),
             contentAlignment = Alignment.Center
@@ -300,7 +357,7 @@ fun MenuNavigationItem(
                 ),
                 color = SleekOnBackground
             )
-            Spacer(modifier = Modifier.height(2.dp))
+            Spacer(modifier = Modifier.height(1.dp))
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),

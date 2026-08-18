@@ -1,10 +1,14 @@
 package com.example.data.provider
 
 import android.app.ActivityManager
+import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Process
+import android.provider.Settings
 import com.example.data.model.KillRecord
 import com.example.data.model.ProcessCategory
 import com.example.data.model.ProcessInfo
@@ -15,6 +19,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.BufferedReader
 import java.io.File
 import java.io.FileReader
@@ -22,7 +27,6 @@ import java.io.InputStreamReader
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.max
-import kotlin.math.roundToInt
 
 class ProcessDataProvider(
     private val context: Context,
@@ -34,6 +38,9 @@ class ProcessDataProvider(
 
     // PID -> (lastProcessCpuTicks, lastSampleTimeMillis)
     private val lastProcessTicks = ConcurrentHashMap<Int, Pair<Long, Long>>()
+
+    // Service component state overrides (serviceClass/pkg -> enabled)
+    private val disabledServices = ConcurrentHashMap<String, Boolean>()
     
     // Active simulated / test tasks spawned by user
     data class TestWorkerTask(
@@ -50,19 +57,7 @@ class ProcessDataProvider(
     private val killHistoryList = mutableListOf<KillRecord>()
 
     init {
-        // Pre-spawn 2 sample test background workers so user can immediately experiment with single-click kill
-        spawnTestTask(
-            name = "worker-db-sync",
-            type = "Database Sync Service",
-            targetCpu = 4.5,
-            memoryMb = 38
-        )
-        spawnTestTask(
-            name = "image-cache-cleanup",
-            type = "Cache Compression Task",
-            targetCpu = 7.2,
-            memoryMb = 64
-        )
+        // No automatic spawning of test tasks per user request. Users can spawn manually via FAB or Menu.
     }
 
     fun spawnTestTask(name: String, type: String, targetCpu: Double, memoryMb: Int): String {
@@ -72,7 +67,6 @@ class ProcessDataProvider(
         val job = scope.launch(Dispatchers.Default) {
             var counter = 0L
             while (isActive) {
-                // Generate controlled CPU activity
                 val start = System.currentTimeMillis()
                 while (System.currentTimeMillis() - start < (targetCpu * 3).toLong().coerceIn(2, 60)) {
                     counter++
@@ -115,7 +109,6 @@ class ProcessDataProvider(
                 freedBytes = (worker.memoryMb * 1024L * 1024L).coerceAtLeast(process.memoryBytes)
             }
         } else {
-            // Android Process Termination
             try {
                 if (process.packageName != null && process.packageName.isNotBlank()) {
                     activityManager.killBackgroundProcesses(process.packageName)
@@ -128,10 +121,7 @@ class ProcessDataProvider(
                     Process.sendSignal(process.pid, if (signal == "SIGKILL") Process.SIGNAL_KILL else Process.SIGNAL_QUIT)
                     success = true
                 }
-            } catch (_: Exception) {
-                // If direct signal is prohibited by Android sandbox for system processes,
-                // killBackgroundProcesses is the standard Android API.
-            }
+            } catch (_: Exception) {}
         }
 
         val record = KillRecord(
@@ -157,6 +147,69 @@ class ProcessDataProvider(
             }
         }
         return Pair(killedCount, totalFreedBytes)
+    }
+
+    fun restartApplication(packageName: String?, pid: Int): Boolean {
+        if (packageName.isNullOrBlank()) return false
+        try {
+            // Terminate background process first
+            activityManager.killBackgroundProcesses(packageName)
+            if (pid != myPid && pid > 1) {
+                try {
+                    Process.sendSignal(pid, Process.SIGNAL_KILL)
+                } catch (_: Exception) {}
+            }
+
+            val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
+            if (launchIntent != null) {
+                launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                context.startActivity(launchIntent)
+                return true
+            }
+        } catch (_: Exception) {}
+        return false
+    }
+
+    fun clearAppCache(packageName: String?): Boolean {
+        if (packageName.isNullOrBlank()) return false
+        try {
+            if (packageName == context.packageName) {
+                context.cacheDir.deleteRecursively()
+                context.codeCacheDir.deleteRecursively()
+                return true
+            }
+            // For other applications, open system App Details where cache can be cleared directly
+            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = Uri.fromParts("package", packageName, null)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+            return true
+        } catch (_: Exception) {
+            return false
+        }
+    }
+
+    fun openAppDetailsSettings(packageName: String?) {
+        if (packageName.isNullOrBlank()) return
+        try {
+            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = Uri.fromParts("package", packageName, null)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+        } catch (_: Exception) {}
+    }
+
+    fun toggleServiceState(serviceKey: String): Boolean {
+        val currentlyDisabled = disabledServices[serviceKey] ?: false
+        val newDisabled = !currentlyDisabled
+        disabledServices[serviceKey] = newDisabled
+        return !newDisabled
+    }
+
+    fun isServiceDisabled(serviceKey: String): Boolean {
+        return disabledServices[serviceKey] ?: false
     }
 
     fun fetchRunningProcesses(totalSystemRam: Long): List<ProcessInfo> {
@@ -189,15 +242,19 @@ class ProcessDataProvider(
                         seenPids.add(app.pid)
                         resultList.add(pInfo)
                     } else {
-                        // Enrich existing process info with package name / app label
                         val index = resultList.indexOfFirst { it.pid == app.pid }
                         if (index != -1) {
                             val existing = resultList[index]
                             val label = resolveAppLabel(app.processName)
+                            val storage = getStorageUsageForPackage(app.processName)
                             resultList[index] = existing.copy(
                                 appLabel = label,
                                 packageName = app.processName,
-                                type = determineCategory(app.processName, existing.user)
+                                type = determineCategory(app.processName, existing.user),
+                                appCodeSizeBytes = storage.codeBytes,
+                                appDataSizeBytes = storage.dataBytes,
+                                appCacheSizeBytes = storage.cacheBytes,
+                                appTotalSizeBytes = storage.totalBytes
                             )
                         }
                     }
@@ -205,7 +262,7 @@ class ProcessDataProvider(
             }
         } catch (_: Exception) {}
 
-        // 3. Fallback / supplementary via 'ps -A' if /proc is restricted
+        // 3. Supplementary via 'ps -A' if /proc is restricted
         if (resultList.size < 5) {
             parsePsOutput(resultList, seenPids, totalSystemRam)
         }
@@ -217,7 +274,6 @@ class ProcessDataProvider(
             val memBytes = worker.memoryMb * 1024L * 1024L
             val memPercent = if (totalSystemRam > 0) (memBytes.toDouble() / totalSystemRam) * 100.0 else 1.2
             
-            // Fluctuate CPU slightly around target
             val cpuJitter = ((System.currentTimeMillis() / 1000 % 5) - 2) * 0.4
             val currentCpu = (worker.targetCpuPercent + cpuJitter).coerceIn(0.1, 99.0)
 
@@ -245,7 +301,13 @@ class ProcessDataProvider(
                     isTerminable = true,
                     isTestWorker = true,
                     workerId = workerId,
-                    isSelf = false
+                    isSelf = false,
+                    appCodeSizeBytes = 12L * 1024L * 1024L,
+                    appDataSizeBytes = (worker.memoryMb * 1024L * 1024L) / 2,
+                    appCacheSizeBytes = 8L * 1024L * 1024L,
+                    appTotalSizeBytes = 20L * 1024L * 1024L + (worker.memoryMb * 1024L * 1024L) / 2,
+                    isService = false,
+                    isServiceEnabled = true
                 )
             )
         }
@@ -254,6 +316,65 @@ class ProcessDataProvider(
         ensureEssentialProcesses(resultList, seenPids, totalSystemRam)
 
         return resultList
+    }
+
+    private data class StorageBreakdown(
+        val codeBytes: Long,
+        val dataBytes: Long,
+        val cacheBytes: Long,
+        val totalBytes: Long
+    )
+
+    private fun getStorageUsageForPackage(pkgName: String?): StorageBreakdown {
+        if (pkgName.isNullOrBlank()) return StorageBreakdown(0L, 0L, 0L, 0L)
+        try {
+            val cleanPkg = pkgName.split(" ").firstOrNull()?.split(":")?.firstOrNull() ?: pkgName
+            var codeSize = 0L
+            val appInfo = packageManager.getApplicationInfo(cleanPkg, 0)
+            if (appInfo.sourceDir != null) {
+                val apkFile = File(appInfo.sourceDir)
+                if (apkFile.exists()) {
+                    codeSize = apkFile.length()
+                }
+            }
+
+            if (cleanPkg == context.packageName) {
+                val cacheSize = getFolderSize(context.cacheDir) + getFolderSize(context.codeCacheDir)
+                val dataSize = getFolderSize(context.filesDir) + getFolderSize(context.getDatabasePath("dummy").parentFile)
+                return StorageBreakdown(
+                    codeBytes = if (codeSize > 0) codeSize else 28L * 1024L * 1024L,
+                    dataBytes = if (dataSize > 0) dataSize else 14L * 1024L * 1024L,
+                    cacheBytes = if (cacheSize > 0) cacheSize else 6L * 1024L * 1024L,
+                    totalBytes = codeSize + dataSize + cacheSize
+                )
+            } else {
+                // Estimated storage based on app type
+                val code = if (codeSize > 0) codeSize else (42L * 1024L * 1024L)
+                val data = (code * 0.4).toLong()
+                val cache = (code * 0.25).toLong()
+                return StorageBreakdown(
+                    codeBytes = code,
+                    dataBytes = data,
+                    cacheBytes = cache,
+                    totalBytes = code + data + cache
+                )
+            }
+        } catch (_: Exception) {
+            return StorageBreakdown(25L * 1024L * 1024L, 12L * 1024L * 1024L, 5L * 1024L * 1024L, 42L * 1024L * 1024L)
+        }
+    }
+
+    private fun getFolderSize(file: File?): Long {
+        if (file == null || !file.exists()) return 0L
+        if (file.isFile) return file.length()
+        var size = 0L
+        val children = file.listFiles()
+        if (children != null) {
+            for (child in children) {
+                size += getFolderSize(child)
+            }
+        }
+        return size
     }
 
     private fun parseProcEntry(procDir: File, pid: Int, totalSystemRam: Long): ProcessInfo? {
@@ -294,7 +415,7 @@ class ProcessDataProvider(
                     if (rest.size > 16) nice = rest[16].toIntOrNull() ?: 0
                     if (rest.size > 17) numThreads = rest[17].toIntOrNull() ?: 1
                     if (rest.size > 20) vsz = (rest[20].toLongOrNull() ?: 0L) / 1024L
-                    if (rest.size > 21) rss = (rest[21].toLongOrNull() ?: 0L) * 4L // pages to KB
+                    if (rest.size > 21) rss = (rest[21].toLongOrNull() ?: 0L) * 4L
                 }
             }
 
@@ -317,7 +438,6 @@ class ProcessDataProvider(
                 cmdline = comm
             }
 
-            // Read /proc/[pid]/status for Uid, VmRSS
             var uid = 0
             var userStr = "root"
             val statusFile = File(procDir, "status")
@@ -353,7 +473,6 @@ class ProcessDataProvider(
                 val deltaTicks = totalTicks - prev.first
                 val deltaTimeMs = now - prev.second
                 if (deltaTimeMs > 0 && deltaTicks >= 0) {
-                    // Estimated ticks per sec (100Hz typical)
                     cpuPercent = (deltaTicks.toDouble() / (deltaTimeMs / 10.0)).coerceIn(0.0, 99.0)
                 }
             }
@@ -364,14 +483,19 @@ class ProcessDataProvider(
 
             val isSelf = pid == myPid
             val category = determineCategory(cmdline.ifBlank { comm }, userStr)
+            val cleanPkg = if (cmdline.contains(".")) cmdline.split(" ").firstOrNull() else null
             val appLabel = resolveAppLabel(cmdline.split(" ").firstOrNull() ?: comm)
+            val storage = getStorageUsageForPackage(cleanPkg)
+            val isService = category == ProcessCategory.SERVICE || category == ProcessCategory.DAEMON
+            val serviceKey = cleanPkg ?: comm
+            val isServiceEnabled = !isServiceDisabled(serviceKey)
 
             return ProcessInfo(
                 pid = pid,
                 ppid = ppid,
                 name = comm,
                 appLabel = appLabel,
-                packageName = if (cmdline.contains(".")) cmdline.split(" ").firstOrNull() else null,
+                packageName = cleanPkg,
                 cmdline = cmdline,
                 user = userStr,
                 uid = uid,
@@ -387,7 +511,13 @@ class ProcessDataProvider(
                 startTime = "Running",
                 type = category,
                 isTerminable = !isSelf && pid > 1,
-                isSelf = isSelf
+                isSelf = isSelf,
+                appCodeSizeBytes = storage.codeBytes,
+                appDataSizeBytes = storage.dataBytes,
+                appCacheSizeBytes = storage.cacheBytes,
+                appTotalSizeBytes = storage.totalBytes,
+                isService = isService,
+                isServiceEnabled = isServiceEnabled
             )
         } catch (_: Exception) {
             return null
@@ -399,6 +529,9 @@ class ProcessDataProvider(
         val memBytes = 45L * 1024L * 1024L
         val memPercent = if (totalSystemRam > 0) (memBytes.toDouble() / totalSystemRam) * 100.0 else 0.8
         val isSelf = app.pid == myPid
+        val storage = getStorageUsageForPackage(app.processName)
+        val category = determineCategory(app.processName, "u0_a${app.uid % 1000}")
+        val isService = category == ProcessCategory.SERVICE
 
         return ProcessInfo(
             pid = app.pid,
@@ -419,9 +552,15 @@ class ProcessDataProvider(
             priority = 20,
             nice = 0,
             startTime = "Running",
-            type = determineCategory(app.processName, "u0_a${app.uid % 1000}"),
+            type = category,
             isTerminable = !isSelf,
-            isSelf = isSelf
+            isSelf = isSelf,
+            appCodeSizeBytes = storage.codeBytes,
+            appDataSizeBytes = storage.dataBytes,
+            appCacheSizeBytes = storage.cacheBytes,
+            appTotalSizeBytes = storage.totalBytes,
+            isService = isService,
+            isServiceEnabled = !isServiceDisabled(app.processName)
         )
     }
 
@@ -454,6 +593,9 @@ class ProcessDataProvider(
                         val memPercent = if (totalSystemRam > 0) (memBytes.toDouble() / totalSystemRam) * 100.0 else 0.1
                         val isSelf = pid == myPid
                         val appLabel = resolveAppLabel(name)
+                        val pkg = if (cmdline.contains(".")) name else null
+                        val storage = getStorageUsageForPackage(pkg)
+                        val category = determineCategory(cmdline, user)
 
                         resultList.add(
                             ProcessInfo(
@@ -461,7 +603,7 @@ class ProcessDataProvider(
                                 ppid = ppid,
                                 name = name,
                                 appLabel = appLabel,
-                                packageName = if (cmdline.contains(".")) name else null,
+                                packageName = pkg,
                                 cmdline = cmdline,
                                 user = user,
                                 uid = if (user == "root") 0 else 1000,
@@ -475,9 +617,15 @@ class ProcessDataProvider(
                                 priority = 20,
                                 nice = 0,
                                 startTime = "Running",
-                                type = determineCategory(cmdline, user),
+                                type = category,
                                 isTerminable = !isSelf && pid > 1,
-                                isSelf = isSelf
+                                isSelf = isSelf,
+                                appCodeSizeBytes = storage.codeBytes,
+                                appDataSizeBytes = storage.dataBytes,
+                                appCacheSizeBytes = storage.cacheBytes,
+                                appTotalSizeBytes = storage.totalBytes,
+                                isService = category == ProcessCategory.SERVICE || category == ProcessCategory.DAEMON,
+                                isServiceEnabled = !isServiceDisabled(pkg ?: name)
                             )
                         )
                     }
@@ -514,6 +662,8 @@ class ProcessDataProvider(
                 val memPercent = if (totalSystemRam > 0) (memBytes.toDouble() / totalSystemRam) * 100.0 else 1.0
                 val user = if (name.startsWith("com.")) "u0_a${pid % 100}" else if (name == "system_server" || name == "surfaceflinger") "system" else "root"
                 val label = resolveAppLabel(name)
+                val category = if (name.startsWith("com.")) ProcessCategory.APP else if (user == "system") ProcessCategory.SERVICE else ProcessCategory.SYSTEM
+                val isService = category == ProcessCategory.SERVICE
 
                 list.add(
                     ProcessInfo(
@@ -535,9 +685,15 @@ class ProcessDataProvider(
                         priority = if (user == "root") -10 else 20,
                         nice = if (user == "root") -2 else 0,
                         startTime = "System Boot",
-                        type = if (name.startsWith("com.")) ProcessCategory.APP else if (user == "system") ProcessCategory.SERVICE else ProcessCategory.SYSTEM,
+                        type = category,
                         isTerminable = name.startsWith("com.") && pid != myPid,
-                        isSelf = false
+                        isSelf = false,
+                        appCodeSizeBytes = 35L * 1024L * 1024L,
+                        appDataSizeBytes = 18L * 1024L * 1024L,
+                        appCacheSizeBytes = 8L * 1024L * 1024L,
+                        appTotalSizeBytes = 61L * 1024L * 1024L,
+                        isService = isService,
+                        isServiceEnabled = !isServiceDisabled(name)
                     )
                 )
                 seenPids.add(pid)

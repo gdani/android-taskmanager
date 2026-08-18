@@ -51,6 +51,10 @@ data class ProcessManagerUiState(
     val showKillHistoryDialog: Boolean = false,
     val showExportDialog: Boolean = false,
     val showSystemInfoDialog: Boolean = false,
+    val showSpeedTestDialog: Boolean = false,
+    val showPingDialog: Boolean = false,
+    val showTracerouteDialog: Boolean = false,
+    val activeTab: Int = 0,
     val snackbarMessage: String? = null
 )
 
@@ -88,13 +92,24 @@ class ProcessManagerViewModel(application: Application) : AndroidViewModel(appli
             val ramPercentVal = (baseRam + sineRam).coerceIn(10.0, 95.0)
             val ramUsed = ((ramPercentVal / 100.0) * totalRam).toLong()
 
+            val baseRx = 85_000L + ((-20_000..60_000).random())
+            val baseTx = 22_000L + ((-8_000..15_000).random())
+
             seedPoints.add(
                 MetricPoint(
                     timestampMs = pointTime,
                     cpuPercent = cpuVal,
                     memoryPercent = ramPercentVal,
                     memoryUsedBytes = ramUsed,
-                    memoryTotalBytes = totalRam
+                    memoryTotalBytes = totalRam,
+                    totalRxSpeedBytesPerSec = baseRx.coerceAtLeast(1024L),
+                    totalTxSpeedBytesPerSec = baseTx.coerceAtLeast(512L),
+                    wifiRxSpeedBytesPerSec = (baseRx * 0.7).toLong(),
+                    wifiTxSpeedBytesPerSec = (baseTx * 0.7).toLong(),
+                    mobileRxSpeedBytesPerSec = (baseRx * 0.25).toLong(),
+                    mobileTxSpeedBytesPerSec = (baseTx * 0.25).toLong(),
+                    bluetoothRxSpeedBytesPerSec = (baseRx * 0.05).toLong(),
+                    bluetoothTxSpeedBytesPerSec = (baseTx * 0.05).toLong()
                 )
             )
         }
@@ -120,6 +135,10 @@ class ProcessManagerViewModel(application: Application) : AndroidViewModel(appli
                 }
             }
         }
+    }
+
+    fun setActiveTab(tabIndex: Int) {
+        _uiState.update { it.copy(activeTab = tabIndex) }
     }
 
     fun refreshNow() {
@@ -151,7 +170,15 @@ class ProcessManagerViewModel(application: Application) : AndroidViewModel(appli
             cpuPercent = updatedStats.totalCpuUsagePercent,
             memoryPercent = updatedStats.memoryUsagePercent,
             memoryUsedBytes = updatedStats.usedMemoryBytes,
-            memoryTotalBytes = updatedStats.totalMemoryBytes
+            memoryTotalBytes = updatedStats.totalMemoryBytes,
+            totalRxSpeedBytesPerSec = updatedStats.totalRxSpeed,
+            totalTxSpeedBytesPerSec = updatedStats.totalTxSpeed,
+            wifiRxSpeedBytesPerSec = updatedStats.wifiRxSpeed,
+            wifiTxSpeedBytesPerSec = updatedStats.wifiTxSpeed,
+            mobileRxSpeedBytesPerSec = updatedStats.mobileRxSpeed,
+            mobileTxSpeedBytesPerSec = updatedStats.mobileTxSpeed,
+            bluetoothRxSpeedBytesPerSec = updatedStats.bluetoothRxSpeed,
+            bluetoothTxSpeedBytesPerSec = updatedStats.bluetoothTxSpeed
         )
 
         val historySnapshot = synchronized(rawMetricHistory) {
@@ -175,9 +202,8 @@ class ProcessManagerViewModel(application: Application) : AndroidViewModel(appli
                     currentState.showBackgroundProcesses
                 )
                 
-                // If detail sheet is open, keep selected process reference fresh
                 val updatedSelected = currentState.selectedProcessForDetail?.let { currentSel ->
-                    rawList.find { it.pid == currentSel.pid }
+                    rawList.find { it.pid == currentSel.pid } ?: currentSel.copy(state = ProcessState.STOPPED)
                 }
 
                 currentState.copy(
@@ -332,7 +358,6 @@ class ProcessManagerViewModel(application: Application) : AndroidViewModel(appli
             
             withContext(Dispatchers.Main) {
                 _uiState.update { state ->
-                    // Remove killed process locally for instant snappy feedback
                     val updatedProcesses = state.processes.filter { it.pid != process.pid }
                     val updatedFiltered = applyFilterAndSort(
                         updatedProcesses,
@@ -348,6 +373,60 @@ class ProcessManagerViewModel(application: Application) : AndroidViewModel(appli
                         filteredProcesses = updatedFiltered,
                         killHistory = dataProvider.getKillHistory(),
                         selectedProcessForDetail = if (state.selectedProcessForDetail?.pid == process.pid) null else state.selectedProcessForDetail,
+                        snackbarMessage = msg
+                    )
+                }
+            }
+        }
+    }
+
+    fun restartProcessApp(process: ProcessInfo) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val success = dataProvider.restartApplication(process.packageName, process.pid)
+            val msg = if (success) "Restarting ${process.displayTitle}..." else "Unable to restart process automatically"
+            withContext(Dispatchers.Main) {
+                _uiState.update { it.copy(snackbarMessage = msg) }
+                refreshNow()
+            }
+        }
+    }
+
+    fun clearProcessCache(process: ProcessInfo) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val success = dataProvider.clearAppCache(process.packageName)
+            val msg = if (success) "Cache cleared for ${process.displayTitle}" else "Opening app storage manager for ${process.displayTitle}"
+            withContext(Dispatchers.Main) {
+                _uiState.update { it.copy(snackbarMessage = msg) }
+                refreshNow()
+            }
+        }
+    }
+
+    fun toggleProcessServiceState(process: ProcessInfo) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val serviceKey = process.packageName ?: process.name
+            val isNowEnabled = dataProvider.toggleServiceState(serviceKey)
+            val msg = if (!isNowEnabled) "Service ${process.displayTitle} disabled/stopped" else "Service ${process.displayTitle} enabled"
+            withContext(Dispatchers.Main) {
+                _uiState.update { state ->
+                    val updatedProcs = state.processes.map { 
+                        if (it.pid == process.pid) it.copy(isServiceEnabled = isNowEnabled) else it 
+                    }
+                    val updatedFiltered = applyFilterAndSort(
+                        updatedProcs,
+                        state.searchQuery,
+                        state.selectedCategory,
+                        state.sortColumn,
+                        state.isSortAscending,
+                        state.showSystemProcesses,
+                        state.showBackgroundProcesses
+                    )
+                    state.copy(
+                        processes = updatedProcs,
+                        filteredProcesses = updatedFiltered,
+                        selectedProcessForDetail = if (state.selectedProcessForDetail?.pid == process.pid) {
+                            state.selectedProcessForDetail.copy(isServiceEnabled = isNowEnabled)
+                        } else state.selectedProcessForDetail,
                         snackbarMessage = msg
                     )
                 }
@@ -424,7 +503,7 @@ class ProcessManagerViewModel(application: Application) : AndroidViewModel(appli
     }
 
     fun spawnTestTask(name: String, type: String, targetCpu: Double, memoryMb: Int) {
-        val workerId = dataProvider.spawnTestTask(name, type, targetCpu, memoryMb)
+        dataProvider.spawnTestTask(name, type, targetCpu, memoryMb)
         _uiState.update { 
             it.copy(
                 showSpawnTaskDialog = false,
@@ -514,6 +593,18 @@ class ProcessManagerViewModel(application: Application) : AndroidViewModel(appli
         _uiState.update { it.copy(showSystemInfoDialog = show) }
     }
 
+    fun setShowSpeedTestDialog(show: Boolean) {
+        _uiState.update { it.copy(showSpeedTestDialog = show) }
+    }
+
+    fun setShowPingDialog(show: Boolean) {
+        _uiState.update { it.copy(showPingDialog = show) }
+    }
+
+    fun setShowTracerouteDialog(show: Boolean) {
+        _uiState.update { it.copy(showTracerouteDialog = show) }
+    }
+
     fun clearKillHistory() {
         dataProvider.clearKillHistory()
         _uiState.update { it.copy(killHistory = emptyList(), snackbarMessage = "Kill history cleared") }
@@ -531,16 +622,15 @@ class ProcessManagerViewModel(application: Application) : AndroidViewModel(appli
         return if (format.uppercase() == "CSV") {
             buildString {
                 appendLine("# ProcMaster Snapshot Export - $timestamp")
-                appendLine("# CPU: ${String.format("%.1f", stats.totalCpuUsagePercent)}% | RAM: ${stats.formattedUsedRam}/${stats.formattedTotalRam}")
+                appendLine("# CPU: ${String.format(java.util.Locale.US, "%.1f", stats.totalCpuUsagePercent)}% | RAM: ${stats.formattedUsedRam}/${stats.formattedTotalRam}")
                 appendLine("PID,PPID,NAME,APP_LABEL,USER,CPU_PERCENT,MEMORY_MB,STATE,THREADS,COMMAND_LINE")
                 for (p in processes) {
-                    val memMb = String.format("%.2f", p.memoryBytes.toDouble() / (1024 * 1024))
+                    val memMb = String.format(java.util.Locale.US, "%.2f", p.memoryBytes.toDouble() / (1024 * 1024))
                     val cleanCmd = p.cmdline.replace("\"", "\"\"")
                     appendLine("${p.pid},${p.ppid},\"${p.name}\",\"${p.appLabel}\",\"${p.user}\",${p.cpuPercent},$memMb,${p.state.code},${p.threadsCount},\"$cleanCmd\"")
                 }
             }
         } else {
-            // JSON format
             buildString {
                 appendLine("{")
                 appendLine("  \"export_timestamp\": \"$timestamp\",")
@@ -587,7 +677,6 @@ class ProcessManagerViewModel(application: Application) : AndroidViewModel(appli
     ): List<ProcessInfo> {
         val q = searchQuery.trim().lowercase()
 
-        // 1. Search Query Filter
         var filtered = if (q.isBlank()) {
             list
         } else {
@@ -601,7 +690,6 @@ class ProcessManagerViewModel(application: Application) : AndroidViewModel(appli
             }
         }
 
-        // 2. System & Background Process Toggles
         if (!showSystem) {
             filtered = filtered.filter { proc ->
                 proc.type != ProcessCategory.SYSTEM && proc.user != "root" && !(proc.user == "system" && proc.type != ProcessCategory.APP)
@@ -614,7 +702,6 @@ class ProcessManagerViewModel(application: Application) : AndroidViewModel(appli
             }
         }
 
-        // 3. Category Filter
         filtered = when (category) {
             ProcessCategoryFilter.ALL -> filtered
             ProcessCategoryFilter.USER_APPS -> filtered.filter { it.type == ProcessCategory.APP }
@@ -627,7 +714,6 @@ class ProcessManagerViewModel(application: Application) : AndroidViewModel(appli
             ProcessCategoryFilter.TEST_WORKERS -> filtered.filter { it.type == ProcessCategory.TEST_WORKER }
         }
 
-        // 4. Sorting
         val comparator: Comparator<ProcessInfo> = when (sortColumn) {
             ProcessSortColumn.PID -> compareBy { it.pid }
             ProcessSortColumn.NAME -> compareBy(String.CASE_INSENSITIVE_ORDER) { it.displayTitle }

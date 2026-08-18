@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -31,13 +32,17 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Analytics
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AltRoute
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.NetworkPing
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.ShowChart
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -74,12 +79,15 @@ import com.example.data.model.SystemStats
 import com.example.ui.components.ExportDialog
 import com.example.ui.components.KillHistoryDialog
 import com.example.ui.components.NavigationMenuSheet
+import com.example.ui.components.NetworkSpeedTestDialog
+import com.example.ui.components.PingUtilityDialog
 import com.example.ui.components.ProcessDetailSheet
 import com.example.ui.components.ProcessFilterBar
 import com.example.ui.components.ProcessTableView
 import com.example.ui.components.SpawnTestTaskDialog
 import com.example.ui.components.SystemInfoDialog
 import com.example.ui.components.SystemMetricsHeader
+import com.example.ui.components.TracerouteUtilityDialog
 import com.example.ui.components.UsageTrendChart
 import com.example.ui.theme.MyApplicationTheme
 import com.example.ui.theme.SleekBackground
@@ -92,7 +100,6 @@ import com.example.ui.theme.SleekOnPrimaryContainer
 import com.example.ui.theme.SleekPrimary
 import com.example.ui.theme.SleekPrimaryContainer
 import com.example.ui.theme.SleekSecondaryContainer
-import com.example.ui.theme.SleekSuccess
 import com.example.ui.theme.SleekSurface
 import com.example.ui.theme.SleekSurfaceVariant
 import com.example.ui.theme.SleekTextMuted
@@ -121,6 +128,8 @@ class MainActivity : ComponentActivity() {
 fun ProcessManagerApp(viewModel: ProcessManagerViewModel) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    
+    // Tab 0: Trends (First/Primary), Tab 1: Processes (Second), Tab 2: History, Tab 3: Specs
     var selectedBottomNavIndex by remember { mutableIntStateOf(0) }
     var showNavigationMenu by remember { mutableStateOf(false) }
 
@@ -152,33 +161,70 @@ fun ProcessManagerApp(viewModel: ProcessManagerViewModel) {
                 .padding(innerPadding)
                 .background(SleekBackground)
         ) {
-            // Live System Monitor Card (CPU/RAM/Quick Actions)
-            SystemMetricsHeader(
-                stats = uiState.systemStats,
-                isPaused = uiState.isAutoRefreshPaused,
-                isRefreshing = uiState.isRefreshing,
-                onTogglePause = { viewModel.toggleAutoRefreshPause() },
-                onManualRefresh = { viewModel.refreshNow() },
-                onKillAllBackground = { viewModel.terminateAllBackgroundApps() },
-                onSpawnTestTask = { viewModel.setShowSpawnTaskDialog(true) },
-                onShowKillHistory = { selectedBottomNavIndex = 2 },
-                onShowExport = { viewModel.setShowExportDialog(true) },
-                onShowSystemInfo = { selectedBottomNavIndex = 3 },
-                onOpenMenu = { showNavigationMenu = true }
-            )
-
-            // Dynamic Tab Views
+            // Dynamic Views based on active tab
             AnimatedContent(
                 targetState = selectedBottomNavIndex,
                 transitionSpec = { fadeIn() togetherWith fadeOut() },
                 label = "tab_content",
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.fillMaxSize()
             ) { tabIndex ->
                 when (tabIndex) {
                     0 -> {
-                        // TAB 0: PROCESSES ONLY (No Trend Chart)
+                        // ==========================================
+                        // TAB 0: TRENDS & TELEMETRY (Primary Tab)
+                        // Shows top system metrics (CPU, RAM, Network) + Trend graphs
+                        // ==========================================
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .verticalScroll(rememberScrollState())
+                        ) {
+                            // Top Header with CPU, RAM, Network telemetry, tool triggers and menu
+                            SystemMetricsHeader(
+                                stats = uiState.systemStats,
+                                isPaused = uiState.isAutoRefreshPaused,
+                                processes = uiState.processes,
+                                onOpenProcessDetail = { viewModel.openProcessDetail(it) },
+                                onTogglePause = { viewModel.toggleAutoRefreshPause() },
+                                onManualRefresh = { viewModel.refreshNow() },
+                                onSpawnTestTask = { viewModel.setShowSpawnTaskDialog(true) },
+                                onShowExport = { viewModel.setShowExportDialog(true) },
+                                onShowSystemInfo = { selectedBottomNavIndex = 3 },
+                                onOpenMenu = { showNavigationMenu = true },
+                                onOpenSpeedTest = { viewModel.setShowSpeedTestDialog(true) },
+                                onOpenPing = { viewModel.setShowPingDialog(true) },
+                                onOpenTraceroute = { viewModel.setShowTracerouteDialog(true) }
+                            )
+
+                            // Trend Telemetry Graph (Overall, WiFi, Mobile, Bluetooth, CPU & RAM)
+                            UsageTrendChart(
+                                metricHistory = uiState.metricHistory,
+                                selectedTimeWindowSeconds = uiState.selectedTimeWindowSeconds,
+                                onSelectTimeWindow = { viewModel.setSelectedTimeWindow(it) },
+                                selectedMetricFilter = uiState.selectedChartMetric,
+                                onSelectMetricFilter = { viewModel.setSelectedChartMetric(it) }
+                            )
+
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
+                    }
+
+                    1 -> {
+                        // ==========================================
+                        // TAB 1: RUNNING PROCESSES (Second Tab)
+                        // Shows ONLY processes and filter controls (No Top Header taking up space)
+                        // ==========================================
                         Column(modifier = Modifier.fillMaxSize()) {
-                            // Filter Bar (Search, System & Background toggles, Category chips)
+                            // Minimal Compact Top Bar for Process Tab
+                            ProcessTabTopBar(
+                                totalProcesses = uiState.processes.size,
+                                runningCount = uiState.systemStats.runningProcesses,
+                                onOpenMenu = { showNavigationMenu = true },
+                                onManualRefresh = { viewModel.refreshNow() },
+                                isRefreshing = uiState.isRefreshing
+                            )
+
+                            // Filter Bar (Search, System & Background toggles, Sizing button, Categories)
                             ProcessFilterBar(
                                 searchQuery = uiState.searchQuery,
                                 onSearchChange = { viewModel.onSearchQueryChange(it) },
@@ -202,7 +248,7 @@ fun ProcessManagerApp(viewModel: ProcessManagerViewModel) {
                                 onSelectRefreshInterval = { viewModel.setRefreshInterval(it) }
                             )
 
-                            // Clean, Filterable, Sortable Process Table
+                            // Sortable & Filterable Process Table
                             Box(modifier = Modifier.weight(1f)) {
                                 ProcessTableView(
                                     processes = uiState.filteredProcesses,
@@ -224,35 +270,10 @@ fun ProcessManagerApp(viewModel: ProcessManagerViewModel) {
                         }
                     }
 
-                    1 -> {
-                        // TAB 1: TRENDS ONLY (Everything else, NO processes at all)
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(vertical = 4.dp)
-                                .verticalScroll(rememberScrollState())
-                        ) {
-                            UsageTrendChart(
-                                metricHistory = uiState.metricHistory,
-                                selectedTimeWindowSeconds = uiState.selectedTimeWindowSeconds,
-                                onSelectTimeWindow = { viewModel.setSelectedTimeWindow(it) },
-                                selectedMetricFilter = uiState.selectedChartMetric,
-                                onSelectMetricFilter = { viewModel.setSelectedChartMetric(it) }
-                            )
-
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            // Trend Analytics Breakdown Card
-                            TrendAnalyticsCard(
-                                stats = uiState.systemStats,
-                                onClearHistory = { viewModel.clearKillHistory() },
-                                onSpawnWorker = { viewModel.setShowSpawnTaskDialog(true) }
-                            )
-                        }
-                    }
-
                     2 -> {
-                        // TAB 2: TERMINATION HISTORY
+                        // ==========================================
+                        // TAB 2: TERMINATION AUDIT LOG / HISTORY
+                        // ==========================================
                         InlineKillHistoryView(
                             history = uiState.killHistory,
                             onClearHistory = { viewModel.clearKillHistory() }
@@ -260,7 +281,9 @@ fun ProcessManagerApp(viewModel: ProcessManagerViewModel) {
                     }
 
                     3 -> {
-                        // TAB 3: SYSTEM SPECS
+                        // ==========================================
+                        // TAB 3: HARDWARE & SYSTEM SPECIFICATIONS
+                        // ==========================================
                         InlineSystemSpecsView(stats = uiState.systemStats)
                     }
                 }
@@ -274,13 +297,18 @@ fun ProcessManagerApp(viewModel: ProcessManagerViewModel) {
                 onSelectTab = { index ->
                     selectedBottomNavIndex = index
                 },
+                onShowSpeedTest = { viewModel.setShowSpeedTestDialog(true) },
+                onShowPing = { viewModel.setShowPingDialog(true) },
+                onShowTraceroute = { viewModel.setShowTracerouteDialog(true) },
+                onShowKillHistory = { selectedBottomNavIndex = 2 },
+                onShowSystemInfo = { selectedBottomNavIndex = 3 },
                 onShowExport = { viewModel.setShowExportDialog(true) },
                 onSpawnTestTask = { viewModel.setShowSpawnTaskDialog(true) },
                 onDismiss = { showNavigationMenu = false }
             )
         }
 
-        // Full Command Line Inspector Bottom Sheet
+        // Full Process Detail, Storage Footprint & Lifecycle Sheet (Req #11, 12, 13, 14)
         uiState.selectedProcessForDetail?.let { selectedProcess ->
             ProcessDetailSheet(
                 process = selectedProcess,
@@ -288,7 +316,37 @@ fun ProcessManagerApp(viewModel: ProcessManagerViewModel) {
                 onTerminate = { signal ->
                     viewModel.terminateProcess(selectedProcess, signal)
                     viewModel.closeProcessDetail()
+                },
+                onRestartApp = { proc ->
+                    viewModel.restartProcessApp(proc)
+                },
+                onClearCache = { proc ->
+                    viewModel.clearProcessCache(proc)
+                },
+                onToggleService = { proc ->
+                    viewModel.toggleProcessServiceState(proc)
                 }
+            )
+        }
+
+        // Speed Test Subprocess Dialog (Req #7)
+        if (uiState.showSpeedTestDialog) {
+            NetworkSpeedTestDialog(
+                onDismiss = { viewModel.setShowSpeedTestDialog(false) }
+            )
+        }
+
+        // Ping Utility Dialog (Req #8)
+        if (uiState.showPingDialog) {
+            PingUtilityDialog(
+                onDismiss = { viewModel.setShowPingDialog(false) }
+            )
+        }
+
+        // Traceroute Utility Dialog (Req #9)
+        if (uiState.showTracerouteDialog) {
+            TracerouteUtilityDialog(
+                onDismiss = { viewModel.setShowTracerouteDialog(false) }
             )
         }
 
@@ -330,119 +388,73 @@ fun ProcessManagerApp(viewModel: ProcessManagerViewModel) {
 }
 
 @Composable
-fun TrendAnalyticsCard(
-    stats: SystemStats,
-    onClearHistory: () -> Unit,
-    onSpawnWorker: () -> Unit,
+fun ProcessTabTopBar(
+    totalProcesses: Int,
+    runningCount: Int,
+    onOpenMenu: () -> Unit,
+    onManualRefresh: () -> Unit,
+    isRefreshing: Boolean,
     modifier: Modifier = Modifier
 ) {
-    Card(
+    Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = SleekSurface),
-        border = androidx.compose.foundation.BorderStroke(1.dp, SleekBorder)
+            .background(SleekSurface)
+            .border(1.dp, SleekBorder)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = "SYSTEM LOAD ANALYSIS",
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 11.sp,
-                    letterSpacing = 1.sp
-                ),
-                color = SleekTextMuted
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(
+                onClick = onOpenMenu,
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(SleekSurfaceVariant)
+                    .testTag("process_tab_menu_button")
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Menu,
+                    contentDescription = "Main Menu",
+                    tint = SleekOnBackground,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(10.dp))
+
+            Column {
+                Text(
+                    text = "Active Processes",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    ),
+                    color = SleekOnBackground
+                )
+                Text(
+                    text = "$totalProcesses tasks ($runningCount running)",
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                    color = SleekTextMuted
+                )
+            }
+        }
+
+        IconButton(
+            onClick = onManualRefresh,
+            modifier = Modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .background(SleekSurfaceVariant)
+                .testTag("process_tab_refresh_button")
+        ) {
+            Icon(
+                imageVector = Icons.Default.Refresh,
+                contentDescription = "Refresh Processes",
+                tint = if (isRefreshing) SleekPrimary else SleekOnBackground,
+                modifier = Modifier.size(18.dp)
             )
-            Spacer(modifier = Modifier.height(10.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                // CPU Summary Pill
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(SleekPrimaryContainer)
-                        .padding(12.dp)
-                ) {
-                    Column {
-                        Text(
-                            text = "CPU Load",
-                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
-                            color = SleekOnPrimaryContainer.copy(alpha = 0.7f)
-                        )
-                        Text(
-                            text = String.format(Locale.US, "%.1f%%", stats.totalCpuUsagePercent),
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 18.sp
-                            ),
-                            color = SleekOnPrimaryContainer
-                        )
-                        Text(
-                            text = "${stats.coreCount} active CPU cores",
-                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                            color = SleekOnPrimaryContainer.copy(alpha = 0.8f)
-                        )
-                    }
-                }
-
-                // RAM Summary Pill
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(SleekSecondaryContainer)
-                        .padding(12.dp)
-                ) {
-                    Column {
-                        Text(
-                            text = "RAM In Use",
-                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
-                            color = SleekOnBackground.copy(alpha = 0.7f)
-                        )
-                        Text(
-                            text = stats.formattedUsedRam,
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 18.sp
-                            ),
-                            color = SleekOnBackground
-                        )
-                        Text(
-                            text = "${String.format(Locale.US, "%.1f", stats.memoryUsagePercent)}% of ${stats.formattedTotalRam}",
-                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                            color = SleekTextMuted
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                FilledTonalButton(
-                    onClick = onSpawnWorker,
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("⚡ Test Worker", style = MaterialTheme.typography.labelMedium)
-                }
-
-                OutlinedButton(
-                    onClick = onClearHistory,
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Clear Logs", style = MaterialTheme.typography.labelMedium)
-                }
-            }
         }
     }
 }
@@ -639,24 +651,108 @@ fun InlineSystemSpecsView(
 
         Spacer(modifier = Modifier.height(14.dp))
 
+        // Hardware & CPU Card
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = SleekSurface),
             border = androidx.compose.foundation.BorderStroke(1.dp, SleekBorder)
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column(modifier = Modifier.padding(14.dp)) {
+                Text(
+                    text = "HARDWARE & CPU",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.8.sp,
+                        fontSize = 10.sp
+                    ),
+                    color = SleekPrimary
+                )
+                Spacer(modifier = Modifier.height(8.dp))
                 SpecsRowItem(label = "Device Model", value = "${android.os.Build.MANUFACTURER.uppercase()} ${android.os.Build.MODEL}")
-                SpecsRowItem(label = "Android Version", value = "Android ${android.os.Build.VERSION.RELEASE} (SDK ${android.os.Build.VERSION.SDK_INT})")
+                SpecsRowDivider()
                 SpecsRowItem(label = "CPU Architecture", value = android.os.Build.SUPPORTED_ABIS.joinToString(", "))
+                SpecsRowDivider()
                 SpecsRowItem(label = "CPU Cores", value = "${stats.coreCount} physical / logical cores")
+                SpecsRowDivider()
+                SpecsRowItem(label = "Hardware Board", value = android.os.Build.BOARD.ifBlank { "Universal SoC" })
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Memory & Load Card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = SleekSurface),
+            border = androidx.compose.foundation.BorderStroke(1.dp, SleekBorder)
+        ) {
+            Column(modifier = Modifier.padding(14.dp)) {
+                Text(
+                    text = "MEMORY & SYSTEM METRICS",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.8.sp,
+                        fontSize = 10.sp
+                    ),
+                    color = SleekPrimary
+                )
+                Spacer(modifier = Modifier.height(8.dp))
                 SpecsRowItem(label = "Total RAM", value = stats.formattedTotalRam)
-                SpecsRowItem(label = "Active Processes", value = "${stats.totalProcesses} running")
+                SpecsRowDivider()
                 SpecsRowItem(label = "RAM Available", value = stats.formattedAvailableRam)
+                SpecsRowDivider()
+                SpecsRowItem(label = "RAM In Use", value = stats.formattedUsedRam)
+                SpecsRowDivider()
+                SpecsRowItem(label = "Active Processes", value = "${stats.totalProcesses} total (${stats.runningProcesses} running)")
+                SpecsRowDivider()
+                SpecsRowItem(label = "Total Threads", value = "${stats.totalThreads} active")
+                SpecsRowDivider()
+                SpecsRowItem(label = "System Uptime", value = stats.systemUptime)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Operating System & Kernel Card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = SleekSurface),
+            border = androidx.compose.foundation.BorderStroke(1.dp, SleekBorder)
+        ) {
+            Column(modifier = Modifier.padding(14.dp)) {
+                Text(
+                    text = "OPERATING SYSTEM & KERNEL",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.8.sp,
+                        fontSize = 10.sp
+                    ),
+                    color = SleekPrimary
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                SpecsRowItem(label = "Android Version", value = "Android ${android.os.Build.VERSION.RELEASE} (API ${android.os.Build.VERSION.SDK_INT})")
+                SpecsRowDivider()
                 SpecsRowItem(label = "Kernel Version", value = System.getProperty("os.version") ?: "Linux Kernel")
+                SpecsRowDivider()
+                SpecsRowItem(label = "Security Patch", value = android.os.Build.VERSION.SECURITY_PATCH ?: "Current")
+                SpecsRowDivider()
+                SpecsRowItem(label = "Build ID", value = android.os.Build.DISPLAY.ifBlank { android.os.Build.ID })
             }
         }
     }
+}
+
+@Composable
+fun SpecsRowDivider() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(1.dp)
+            .background(SleekBorderLight)
+    )
 }
 
 @Composable
@@ -664,22 +760,27 @@ fun SpecsRowItem(label: String, value: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 6.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
+            .padding(vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.bodySmall,
-            color = SleekTextMuted
+            style = MaterialTheme.typography.bodySmall.copy(
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium
+            ),
+            color = SleekTextMuted,
+            modifier = Modifier.width(135.dp)
         )
         Text(
             text = value,
             style = MaterialTheme.typography.bodySmall.copy(
                 fontWeight = FontWeight.SemiBold,
-                fontFamily = FontFamily.Monospace
+                fontFamily = FontFamily.Monospace,
+                fontSize = 12.sp
             ),
-            color = SleekOnBackground
+            color = SleekOnBackground,
+            modifier = Modifier.weight(1f)
         )
     }
 }
@@ -703,20 +804,23 @@ fun SleekBottomNavBar(
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            SleekNavItem(
-                icon = Icons.Default.Dashboard,
-                label = "Processes",
-                isSelected = selectedIndex == 0,
-                onClick = { onSelectTab(0) },
-                testTag = "nav_item_processes"
-            )
+            // Tab 0: Trends (First)
             SleekNavItem(
                 icon = Icons.Default.ShowChart,
                 label = "Trends",
-                isSelected = selectedIndex == 1,
-                onClick = { onSelectTab(1) },
+                isSelected = selectedIndex == 0,
+                onClick = { onSelectTab(0) },
                 testTag = "nav_item_trends"
             )
+            // Tab 1: Processes (Second)
+            SleekNavItem(
+                icon = Icons.Default.Dashboard,
+                label = "Processes",
+                isSelected = selectedIndex == 1,
+                onClick = { onSelectTab(1) },
+                testTag = "nav_item_processes"
+            )
+            // Tab 2: History
             SleekNavItem(
                 icon = Icons.Default.History,
                 label = "History",
@@ -724,6 +828,7 @@ fun SleekBottomNavBar(
                 onClick = { onSelectTab(2) },
                 testTag = "nav_item_analytics"
             )
+            // Tab 3: Specs
             SleekNavItem(
                 icon = Icons.Default.Info,
                 label = "Specs",
