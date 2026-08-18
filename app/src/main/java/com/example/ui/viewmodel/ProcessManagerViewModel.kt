@@ -706,7 +706,13 @@ class ProcessManagerViewModel(application: Application) : AndroidViewModel(appli
             ProcessCategoryFilter.ALL -> filtered
             ProcessCategoryFilter.USER_APPS -> filtered.filter { it.type == ProcessCategory.APP }
             ProcessCategoryFilter.SYSTEM -> filtered.filter { it.type == ProcessCategory.SYSTEM || it.user == "root" || it.user == "system" }
-            ProcessCategoryFilter.BACKGROUND -> filtered.filter { it.type == ProcessCategory.SERVICE || it.type == ProcessCategory.DAEMON }
+            ProcessCategoryFilter.BACKGROUND -> filtered.filter { 
+                it.type == ProcessCategory.SERVICE || 
+                it.type == ProcessCategory.DAEMON || 
+                it.state == ProcessState.SLEEPING || 
+                it.startTime.contains("Cached", ignoreCase = true) ||
+                it.cpuPercent < 1.0
+            }
             ProcessCategoryFilter.SERVICES -> filtered.filter { it.type == ProcessCategory.SERVICE }
             ProcessCategoryFilter.DAEMONS -> filtered.filter { it.type == ProcessCategory.DAEMON }
             ProcessCategoryFilter.HIGH_CPU -> filtered.filter { it.cpuPercent >= 2.0 }
