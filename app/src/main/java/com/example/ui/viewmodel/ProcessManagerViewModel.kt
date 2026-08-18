@@ -57,6 +57,7 @@ data class ProcessManagerUiState(
     val showShellDialog: Boolean = false,
     val showFileManagerDialog: Boolean = false,
     val showSshDialog: Boolean = false,
+    val showScpDialog: Boolean = false,
     val activeTab: Int = 0,
     val snackbarMessage: String? = null
 )
@@ -617,6 +618,7 @@ class ProcessManagerViewModel(application: Application) : AndroidViewModel(appli
     }
 
     fun setShowSshDialog(show: Boolean) { _uiState.update { it.copy(showSshDialog = show) } }
+    fun setShowScpDialog(show: Boolean) { _uiState.update { it.copy(showScpDialog = show) } }
 
     fun clearKillHistory() {
         dataProvider.clearKillHistory()

@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.NetworkPing
 import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Terminal
+import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -69,6 +70,7 @@ fun NavigationMenuSheet(
     onShowShell: () -> Unit,
     onShowFileManager: () -> Unit,
     onShowSsh: () -> Unit,
+    onShowScp: () -> Unit,
     onShowKillHistory: () -> Unit,
     onShowSystemInfo: () -> Unit,
     onShowExport: () -> Unit,
@@ -245,6 +247,16 @@ fun NavigationMenuSheet(
                 isSelected = false,
                 testTag = "menu_nav_ssh",
                 onClick = { onDismiss(); onShowSsh() }
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+            MenuNavigationItem(
+                icon = Icons.Default.Upload,
+                title = "SCP Transfer",
+                subtitle = "Copy a phone file to a remote SSH host",
+                isSelected = false,
+                testTag = "menu_nav_scp",
+                onClick = { onDismiss(); onShowScp() }
             )
 
             Spacer(modifier = Modifier.height(12.dp))

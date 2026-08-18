@@ -92,6 +92,7 @@ import com.example.ui.components.ProcessFilterBar
 import com.example.ui.components.ProcessTableView
 import com.example.ui.components.ShellWindowDialog
 import com.example.ui.components.SshConnectionDialog
+import com.example.ui.components.ScpTransferDialog
 import com.example.ui.components.SpawnTestTaskDialog
 import com.example.ui.components.SystemInfoDialog
 import com.example.ui.components.SystemMetricsHeader
@@ -315,6 +316,7 @@ fun ProcessManagerApp(viewModel: ProcessManagerViewModel) {
                 onShowShell = { viewModel.setShowShellDialog(true) },
                 onShowFileManager = { viewModel.setShowFileManagerDialog(true) },
                 onShowSsh = { viewModel.setShowSshDialog(true) },
+                onShowScp = { viewModel.setShowScpDialog(true) },
                 onShowKillHistory = { previousTabIndex = selectedBottomNavIndex; selectedBottomNavIndex = 2 },
                 onShowSystemInfo = { previousTabIndex = selectedBottomNavIndex; selectedBottomNavIndex = 3 },
                 onShowExport = { viewModel.setShowExportDialog(true) },
@@ -378,6 +380,7 @@ fun ProcessManagerApp(viewModel: ProcessManagerViewModel) {
         if (uiState.showSshDialog) {
             SshConnectionDialog(onDismiss = { viewModel.setShowSshDialog(false) })
         }
+        if (uiState.showScpDialog) { ScpTransferDialog(onDismiss = { viewModel.setShowScpDialog(false) }) }
 
         // Spawn Test Background Task Dialog
         if (uiState.showSpawnTaskDialog) {
