@@ -121,6 +121,7 @@ data class SpeedTestResult(
 fun NetworkSpeedTestDialog(
     onDismiss: () -> Unit
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
     var currentStage by remember { mutableStateOf(SpeedTestStage.IDLE) }
     var selectedLocation by remember { mutableStateOf("Global CDN (Fastly / Cloudflare)") }
@@ -157,6 +158,44 @@ fun NetworkSpeedTestDialog(
 
         activeTestJob = scope.launch(Dispatchers.IO) {
             try {
+                // Verify real connectivity
+                val cm = context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager
+                val activeNet = cm?.activeNetwork
+                val caps = cm?.getNetworkCapabilities(activeNet)
+                val isConnected = caps != null && (
+                    caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) ||
+                    caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR) ||
+                    caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_ETHERNET)
+                )
+
+                if (!isConnected) {
+                    withContext(Dispatchers.Main) {
+                        currentStage = SpeedTestStage.COMPLETED
+                        statusText = "No active network connection (Wi-Fi / Mobile Data / Ethernet disabled). Test aborted."
+                    }
+                    return@launch
+                }
+
+                // HTTP reachability check
+                try {
+                    val url = URL("https://connectivitycheck.gstatic.com/generate_204")
+                    val conn = url.openConnection() as HttpURLConnection
+                    conn.connectTimeout = 3000
+                    conn.readTimeout = 3000
+                    conn.connect()
+                    val responseCode = conn.responseCode
+                    conn.disconnect()
+                    if (responseCode != 204 && responseCode != 200) {
+                        throw java.io.IOException("HTTP $responseCode")
+                    }
+                } catch (e: Exception) {
+                    withContext(Dispatchers.Main) {
+                        currentStage = SpeedTestStage.COMPLETED
+                        statusText = "Speed test failed: No internet access (${e.localizedMessage ?: "Unreachable"})"
+                    }
+                    return@launch
+                }
+
                 // Phase 1: Latency & Jitter Testing
                 withContext(Dispatchers.Main) {
                     statusText = "Measuring latency and jitter to edge server..."
