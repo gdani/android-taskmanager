@@ -54,11 +54,13 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.ChartMetricFilter
@@ -97,6 +99,7 @@ fun UsageTrendChart(
 ) {
     var scrubbedPoint by remember { mutableStateOf<MetricPoint?>(null) }
     var scrubbedXRatio by remember { mutableStateOf<Float?>(null) }
+    val textMeasurer = rememberTextMeasurer()
 
     // Pulsing live indicator
     val infiniteTransition = rememberInfiniteTransition(label = "pulse_chart")
@@ -417,15 +420,17 @@ fun UsageTrendChart(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(150.dp)
+                        .height(160.dp)
                         .clip(RoundedCornerShape(12.dp))
                         .background(SleekSurface)
                         .border(1.dp, SleekBorderLight, RoundedCornerShape(12.dp))
-                        .padding(start = 6.dp, end = 12.dp, top = 10.dp, bottom = 22.dp)
+                        .padding(8.dp)
                         .pointerInput(windowPoints, startTimeMs, now) {
                             detectTapGestures(
                                 onPress = { offset ->
-                                    val ratio = (offset.x / size.width).coerceIn(0f, 1f)
+                                    val leftMargin = 32.dp.toPx()
+                                    val availableWidth = (size.width - leftMargin - 4.dp.toPx()).coerceAtLeast(1f)
+                                    val ratio = ((offset.x - leftMargin) / availableWidth).coerceIn(0f, 1f)
                                     val targetTime = startTimeMs + (ratio * (now - startTimeMs)).toLong()
                                     scrubbedPoint = windowPoints.minByOrNull { abs(it.timestampMs - targetTime) }
                                     scrubbedXRatio = ratio
@@ -438,7 +443,9 @@ fun UsageTrendChart(
                         .pointerInput(windowPoints, startTimeMs, now) {
                             detectDragGestures(
                                 onDragStart = { offset ->
-                                    val ratio = (offset.x / size.width).coerceIn(0f, 1f)
+                                    val leftMargin = 32.dp.toPx()
+                                    val availableWidth = (size.width - leftMargin - 4.dp.toPx()).coerceAtLeast(1f)
+                                    val ratio = ((offset.x - leftMargin) / availableWidth).coerceIn(0f, 1f)
                                     val targetTime = startTimeMs + (ratio * (now - startTimeMs)).toLong()
                                     scrubbedPoint = windowPoints.minByOrNull { abs(it.timestampMs - targetTime) }
                                     scrubbedXRatio = ratio
@@ -453,7 +460,9 @@ fun UsageTrendChart(
                                 },
                                 onDrag = { change, _ ->
                                     change.consume()
-                                    val ratio = (change.position.x / size.width).coerceIn(0f, 1f)
+                                    val leftMargin = 32.dp.toPx()
+                                    val availableWidth = (size.width - leftMargin - 4.dp.toPx()).coerceAtLeast(1f)
+                                    val ratio = ((change.position.x - leftMargin) / availableWidth).coerceIn(0f, 1f)
                                     val targetTime = startTimeMs + (ratio * (now - startTimeMs)).toLong()
                                     scrubbedPoint = windowPoints.minByOrNull { abs(it.timestampMs - targetTime) }
                                     scrubbedXRatio = ratio
@@ -464,38 +473,45 @@ fun UsageTrendChart(
                     Canvas(modifier = Modifier.fillMaxSize()) {
                         val canvasWidth = size.width
                         val canvasHeight = size.height
-                        val leftPadding = 32f
-                        val plotWidth = canvasWidth - leftPadding
-                        val plotHeight = canvasHeight
+                        val leftPadding = 32.dp.toPx()
+                        val rightPadding = 6.dp.toPx()
+                        val topPadding = 6.dp.toPx()
+                        val bottomPadding = 18.dp.toPx()
+
+                        val plotWidth = canvasWidth - leftPadding - rightPadding
+                        val plotHeight = canvasHeight - topPadding - bottomPadding
+                        val plotTop = topPadding
+                        val plotBottom = topPadding + plotHeight
+                        val plotLeft = leftPadding
 
                         if (plotWidth <= 0 || plotHeight <= 0) return@Canvas
 
                         // 1. Draw Grid Lines and Y-Axis Percentage Labels
                         val ySteps = listOf(0, 25, 50, 75, 100)
                         val gridColor = Color(0xFFE2DDE8)
-                        val textPaint = android.graphics.Paint().apply {
-                            color = android.graphics.Color.parseColor("#79747E")
-                            textSize = 9.sp.toPx()
-                            isAntiAlias = true
-                            typeface = android.graphics.Typeface.MONOSPACE
-                        }
+                        val axisTextStyle = TextStyle(
+                            color = SleekTextMuted,
+                            fontSize = 9.sp,
+                            fontFamily = FontFamily.Monospace
+                        )
 
                         ySteps.forEach { stepPercent ->
-                            val y = plotHeight - (stepPercent / 100f) * plotHeight
+                            val y = plotBottom - (stepPercent / 100f) * plotHeight
                             // Line
                             drawLine(
                                 color = gridColor,
-                                start = Offset(leftPadding, y),
-                                end = Offset(canvasWidth, y),
+                                start = Offset(plotLeft, y),
+                                end = Offset(plotLeft + plotWidth, y),
                                 strokeWidth = 1.dp.toPx(),
                                 pathEffect = if (stepPercent in 1..99) PathEffect.dashPathEffect(floatArrayOf(6f, 6f), 0f) else null
                             )
                             // Label
-                            drawContext.canvas.nativeCanvas.drawText(
-                                "$stepPercent%",
-                                2f,
-                                y + 3.dp.toPx(),
-                                textPaint
+                            val labelY = (y - 5.dp.toPx()).coerceIn(0f, (canvasHeight - 12.dp.toPx()).coerceAtLeast(0f))
+                            drawText(
+                                textMeasurer = textMeasurer,
+                                text = "$stepPercent%",
+                                topLeft = Offset(0f, labelY),
+                                style = axisTextStyle
                             )
                         }
 
@@ -503,15 +519,18 @@ fun UsageTrendChart(
                         val timeTicksCount = 4
                         for (i in 0..timeTicksCount) {
                             val ratio = i.toFloat() / timeTicksCount
-                            val x = leftPadding + (ratio * plotWidth)
+                            val x = plotLeft + (ratio * plotWidth)
                             val secAgo = selectedTimeWindowSeconds - (ratio * selectedTimeWindowSeconds).toInt()
                             val label = if (secAgo == 0) "Now" else "-${secAgo}s"
                             
-                            drawContext.canvas.nativeCanvas.drawText(
-                                label,
-                                x - (if (secAgo == 0) 18f else 12f),
-                                plotHeight + 16.dp.toPx(),
-                                textPaint
+                            val labelX = (x - (if (secAgo == 0) 22.dp.toPx() else 10.dp.toPx())).coerceIn(plotLeft - 4.dp.toPx(), (canvasWidth - 26.dp.toPx()).coerceAtLeast(0f))
+                            val labelY = (plotBottom + 2.dp.toPx()).coerceIn(0f, (canvasHeight - 12.dp.toPx()).coerceAtLeast(0f))
+
+                            drawText(
+                                textMeasurer = textMeasurer,
+                                text = label,
+                                topLeft = Offset(labelX, labelY),
+                                style = axisTextStyle
                             )
                         }
 
@@ -520,8 +539,8 @@ fun UsageTrendChart(
                         // Helper to calculate (x, y) coordinates for a point
                         fun calculateCoords(point: MetricPoint, valuePercent: Double): Offset {
                             val timeRatio = ((point.timestampMs - startTimeMs).toFloat() / windowMs.toFloat()).coerceIn(0f, 1f)
-                            val x = leftPadding + (timeRatio * plotWidth)
-                            val y = plotHeight - ((valuePercent / 100.0).toFloat().coerceIn(0f, 1f) * plotHeight)
+                            val x = plotLeft + (timeRatio * plotWidth)
+                            val y = plotBottom - ((valuePercent / 100.0).toFloat().coerceIn(0f, 1f) * plotHeight)
                             return Offset(x, y)
                         }
 
@@ -533,7 +552,7 @@ fun UsageTrendChart(
                                 val cpuFillPath = Path()
 
                                 cpuPath.moveTo(cpuCoords.first().x, cpuCoords.first().y)
-                                cpuFillPath.moveTo(cpuCoords.first().x, plotHeight)
+                                cpuFillPath.moveTo(cpuCoords.first().x, plotBottom)
                                 cpuFillPath.lineTo(cpuCoords.first().x, cpuCoords.first().y)
 
                                 for (i in 1 until cpuCoords.size) {
@@ -548,7 +567,7 @@ fun UsageTrendChart(
                                     cpuFillPath.cubicTo(cpx1, cpy1, cpx2, cpy2, curr.x, curr.y)
                                 }
 
-                                cpuFillPath.lineTo(cpuCoords.last().x, plotHeight)
+                                cpuFillPath.lineTo(cpuCoords.last().x, plotBottom)
                                 cpuFillPath.close()
 
                                 // Gradient Area Fill under CPU curve
@@ -559,8 +578,8 @@ fun UsageTrendChart(
                                             SleekPrimary.copy(alpha = 0.22f),
                                             SleekPrimary.copy(alpha = 0.0f)
                                         ),
-                                        startY = 0f,
-                                        endY = plotHeight
+                                        startY = plotTop,
+                                        endY = plotBottom
                                     )
                                 )
 
@@ -598,7 +617,7 @@ fun UsageTrendChart(
                                 val memFillPath = Path()
 
                                 memPath.moveTo(memCoords.first().x, memCoords.first().y)
-                                memFillPath.moveTo(memCoords.first().x, plotHeight)
+                                memFillPath.moveTo(memCoords.first().x, plotBottom)
                                 memFillPath.lineTo(memCoords.first().x, memCoords.first().y)
 
                                 for (i in 1 until memCoords.size) {
@@ -613,7 +632,7 @@ fun UsageTrendChart(
                                     memFillPath.cubicTo(cpx1, cpy1, cpx2, cpy2, curr.x, curr.y)
                                 }
 
-                                memFillPath.lineTo(memCoords.last().x, plotHeight)
+                                memFillPath.lineTo(memCoords.last().x, plotBottom)
                                 memFillPath.close()
 
                                 // Gradient Area Fill under RAM curve
@@ -624,8 +643,8 @@ fun UsageTrendChart(
                                             SleekMemory.copy(alpha = 0.18f),
                                             SleekMemory.copy(alpha = 0.0f)
                                         ),
-                                        startY = 0f,
-                                        endY = plotHeight
+                                        startY = plotTop,
+                                        endY = plotBottom
                                     )
                                 )
 
@@ -658,20 +677,20 @@ fun UsageTrendChart(
                         // 5. Draw Interactive Touch Scrubber Line & Intersection Dots
                         scrubbedPoint?.let { sp ->
                             val timeRatio = ((sp.timestampMs - startTimeMs).toFloat() / windowMs.toFloat()).coerceIn(0f, 1f)
-                            val scrubX = leftPadding + (timeRatio * plotWidth)
+                            val scrubX = plotLeft + (timeRatio * plotWidth)
 
                             // Vertical dashed scrubber line
                             drawLine(
                                 color = SleekOnBackground.copy(alpha = 0.6f),
-                                start = Offset(scrubX, 0f),
-                                end = Offset(scrubX, plotHeight),
+                                start = Offset(scrubX, plotTop),
+                                end = Offset(scrubX, plotBottom),
                                 strokeWidth = 1.5.dp.toPx(),
                                 pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 6f), 0f)
                             )
 
                             // CPU dot at scrub position
                             if (selectedMetricFilter != ChartMetricFilter.MEMORY_ONLY) {
-                                val cpuY = plotHeight - ((sp.cpuPercent / 100.0).toFloat().coerceIn(0f, 1f) * plotHeight)
+                                val cpuY = plotBottom - ((sp.cpuPercent / 100.0).toFloat().coerceIn(0f, 1f) * plotHeight)
                                 drawCircle(
                                     color = SleekPrimary,
                                     radius = 5.dp.toPx(),
@@ -686,7 +705,7 @@ fun UsageTrendChart(
 
                             // RAM dot at scrub position
                             if (selectedMetricFilter != ChartMetricFilter.CPU_ONLY) {
-                                val memY = plotHeight - ((sp.memoryPercent / 100.0).toFloat().coerceIn(0f, 1f) * plotHeight)
+                                val memY = plotBottom - ((sp.memoryPercent / 100.0).toFloat().coerceIn(0f, 1f) * plotHeight)
                                 drawCircle(
                                     color = SleekMemory,
                                     radius = 5.dp.toPx(),

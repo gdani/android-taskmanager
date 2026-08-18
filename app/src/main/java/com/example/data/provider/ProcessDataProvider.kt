@@ -43,7 +43,6 @@ class ProcessDataProvider(
         val targetCpuPercent: Double,
         val memoryMb: Int,
         val job: Job,
-        val memoryBuffer: ByteArray?,
         val startTimeMillis: Long
     )
 
@@ -69,13 +68,6 @@ class ProcessDataProvider(
     fun spawnTestTask(name: String, type: String, targetCpu: Double, memoryMb: Int): String {
         val workerId = UUID.randomUUID().toString().take(8)
         val cmdline = "procmaster-worker --id=$workerId --name=$name --task=\"$type\" --cpu=$targetCpu% --mem=${memoryMb}MB"
-        
-        // Allocate buffer to reflect in real memory if desired
-        val memoryBuffer: ByteArray? = try {
-            if (memoryMb in 1..200) ByteArray(memoryMb * 1024 * 1024 / 4) else null
-        } catch (_: OutOfMemoryError) {
-            null
-        }
 
         val job = scope.launch(Dispatchers.Default) {
             var counter = 0L
@@ -97,7 +89,6 @@ class ProcessDataProvider(
             targetCpuPercent = targetCpu,
             memoryMb = memoryMb,
             job = job,
-            memoryBuffer = memoryBuffer,
             startTimeMillis = System.currentTimeMillis()
         )
         activeTestWorkers[workerId] = worker
