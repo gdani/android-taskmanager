@@ -16,3 +16,16 @@
 local.properties
 .env
 debug.keystore
+/.idea/.gitignore
+/.idea/.name
+/.idea/AndroidProjectSystem.xml
+/.idea/codeStyles/codeStyleConfig.xml
+/.idea/compiler.xml
+/.idea/deploymentTargetSelector.xml
+/.idea/deviceManager.xml
+/.idea/gradle.xml
+/.idea/migrations.xml
+/.idea/misc.xml
+/.idea/codeStyles/Project.xml
+/.idea/runConfigurations.xml
+/.idea/vcs.xml
