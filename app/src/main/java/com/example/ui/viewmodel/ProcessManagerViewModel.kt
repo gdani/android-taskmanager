@@ -54,6 +54,7 @@ data class ProcessManagerUiState(
     val showSpeedTestDialog: Boolean = false,
     val showPingDialog: Boolean = false,
     val showTracerouteDialog: Boolean = false,
+    val showShellDialog: Boolean = false,
     val activeTab: Int = 0,
     val snackbarMessage: String? = null
 )
@@ -603,6 +604,10 @@ class ProcessManagerViewModel(application: Application) : AndroidViewModel(appli
 
     fun setShowTracerouteDialog(show: Boolean) {
         _uiState.update { it.copy(showTracerouteDialog = show) }
+    }
+
+    fun setShowShellDialog(show: Boolean) {
+        _uiState.update { it.copy(showShellDialog = show) }
     }
 
     fun clearKillHistory() {

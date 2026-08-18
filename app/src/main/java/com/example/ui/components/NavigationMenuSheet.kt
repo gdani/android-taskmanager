@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.NetworkPing
 import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -64,6 +65,7 @@ fun NavigationMenuSheet(
     onShowSpeedTest: () -> Unit,
     onShowPing: () -> Unit,
     onShowTraceroute: () -> Unit,
+    onShowShell: () -> Unit,
     onShowKillHistory: () -> Unit,
     onShowSystemInfo: () -> Unit,
     onShowExport: () -> Unit,
@@ -316,6 +318,21 @@ fun NavigationMenuSheet(
                 onClick = {
                     onDismiss()
                     onTerminateAllBackgroundApps()
+                }
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // Keep the shell at the end: it is an advanced tool.
+            MenuNavigationItem(
+                icon = Icons.Default.Terminal,
+                title = "Shell Window",
+                subtitle = "Run commands in the app's Android shell sandbox",
+                isSelected = false,
+                testTag = "menu_nav_shell",
+                onClick = {
+                    onDismiss()
+                    onShowShell()
                 }
             )
         }

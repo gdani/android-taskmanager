@@ -27,6 +27,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.BatteryChargingFull
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Dns
@@ -113,6 +114,7 @@ fun SystemMetricsHeader(
     var expandedCores by remember { mutableStateOf(false) }
     var expandedRam by remember { mutableStateOf(false) }
     var expandedNetwork by remember { mutableStateOf(false) }
+    var expandedBattery by remember { mutableStateOf(false) }
     var showRamExplainer by remember { mutableStateOf(false) }
 
     // Pulsing live indicator
@@ -231,7 +233,7 @@ fun SystemMetricsHeader(
                 IconButton(
                     onClick = onTogglePause,
                     modifier = Modifier
-                        .size(36.dp)
+                        .size(24.dp)
                         .clip(CircleShape)
                         .background(SleekSurfaceVariant)
                         .testTag("toggle_pause_button")
@@ -240,7 +242,7 @@ fun SystemMetricsHeader(
                         imageVector = if (isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
                         contentDescription = if (isPaused) "Resume Live Monitor" else "Pause Live Monitor",
                         tint = SleekOnBackground,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(14.dp)
                     )
                 }
 
@@ -248,7 +250,7 @@ fun SystemMetricsHeader(
                 IconButton(
                     onClick = onManualRefresh,
                     modifier = Modifier
-                        .size(36.dp)
+                        .size(24.dp)
                         .clip(CircleShape)
                         .background(SleekSurfaceVariant)
                         .testTag("manual_refresh_button")
@@ -257,7 +259,7 @@ fun SystemMetricsHeader(
                         imageVector = Icons.Default.Refresh,
                         contentDescription = "Manual Refresh",
                         tint = SleekOnBackground,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(14.dp)
                     )
                 }
 
@@ -265,7 +267,7 @@ fun SystemMetricsHeader(
                 IconButton(
                     onClick = onShowSystemInfo,
                     modifier = Modifier
-                        .size(36.dp)
+                        .size(24.dp)
                         .clip(CircleShape)
                         .background(SleekSurfaceVariant)
                         .testTag("system_info_button")
@@ -274,7 +276,7 @@ fun SystemMetricsHeader(
                         imageVector = Icons.Default.Info,
                         contentDescription = "System Specs",
                         tint = SleekOnBackground,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(14.dp)
                     )
                 }
             }
@@ -294,7 +296,10 @@ fun SystemMetricsHeader(
                     .clip(RoundedCornerShape(16.dp))
                     .background(SleekPrimaryContainer)
                     .border(1.dp, SleekPrimaryBorder, RoundedCornerShape(16.dp))
-                    .clickable { expandedCores = !expandedCores }
+                    .clickable {
+                        expandedCores = !expandedCores
+                        expandedRam = false
+                    }
                     .padding(12.dp)
             ) {
                 Column {
@@ -366,7 +371,10 @@ fun SystemMetricsHeader(
                     .clip(RoundedCornerShape(16.dp))
                     .background(SleekSurfaceVariant)
                     .border(1.dp, if (expandedRam) SleekPrimaryBorder else SleekBorder, RoundedCornerShape(16.dp))
-                    .clickable { expandedRam = !expandedRam }
+                    .clickable {
+                        expandedRam = !expandedRam
+                        expandedCores = false
+                    }
                     .padding(12.dp)
             ) {
                 Column {
@@ -862,6 +870,9 @@ fun SystemMetricsHeader(
                     }
                 }
 
+                // Keep the closed card concise: headline transfer rates and signal only.
+                AnimatedVisibility(visible = expandedNetwork) {
+                    Column {
                 Spacer(modifier = Modifier.height(10.dp))
 
                 // NETWORK ADDRESSING & CONNECTION INFO (Req #1: Local IP, Hostname, DNS, Gateway, External IP, Signal)
@@ -1139,6 +1150,63 @@ fun SystemMetricsHeader(
                         }
                     }
                 }
+                    }
+                }
+            }
+        }
+
+        // Battery follows the network card so the Trends layout reads CPU/RAM, details, network, battery.
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(SleekSurfaceVariant)
+                .border(1.dp, if (expandedBattery) SleekPrimaryBorder else SleekBorder, RoundedCornerShape(16.dp))
+                .clickable { expandedBattery = !expandedBattery }
+                .padding(12.dp)
+                .testTag("battery_info_card")
+        ) {
+            Column {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(modifier = Modifier.size(34.dp).clip(RoundedCornerShape(9.dp)).background(SleekPrimaryContainer), contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.BatteryChargingFull, null, tint = SleekPrimary, modifier = Modifier.size(20.dp))
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text("BATTERY", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp), color = SleekTextMuted)
+                            Text("${stats.batteryStatus} • ${String.format(java.util.Locale.US, "%.1f", stats.batteryTemperatureC)}°C", style = MaterialTheme.typography.bodySmall, color = SleekTextMuted)
+                        }
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text("${stats.batteryLevelPercent}%", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold), color = SleekOnBackground)
+                            Text("${stats.batteryVoltageMv} mV", style = MaterialTheme.typography.labelSmall, color = SleekTextMuted)
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Icon(if (expandedBattery) Icons.Default.ExpandLess else Icons.Default.ExpandMore, "Expand battery details", tint = SleekTextMuted, modifier = Modifier.size(18.dp))
+                    }
+                }
+                AnimatedVisibility(visible = expandedBattery) {
+                    Column(modifier = Modifier.padding(top = 10.dp)) {
+                        Box(Modifier.fillMaxWidth().height(1.dp).background(SleekBorder))
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            BatteryDetail("Health", stats.batteryHealth)
+                            BatteryDetail("Technology", stats.batteryTechnology, Alignment.End)
+                        }
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            BatteryDetail("Temperature", "${String.format(java.util.Locale.US, "%.1f", stats.batteryTemperatureC)} °C")
+                            BatteryDetail("Voltage", "${stats.batteryVoltageMv} mV", Alignment.End)
+                        }
+                    }
+                }
             }
         }
 
@@ -1154,7 +1222,7 @@ fun SystemMetricsHeader(
             ElevatedButton(
                 onClick = onOpenSpeedTest,
                 modifier = Modifier
-                    .weight(0.85f)
+                    .weight(1f)
                     .height(36.dp)
                     .testTag("open_speed_test_header_button"),
                 shape = RoundedCornerShape(10.dp),
@@ -1172,7 +1240,7 @@ fun SystemMetricsHeader(
             FilledTonalButton(
                 onClick = onSpawnTestTask,
                 modifier = Modifier
-                    .weight(0.95f)
+                    .weight(1f)
                     .height(36.dp)
                     .testTag("spawn_test_task_button"),
                 shape = RoundedCornerShape(10.dp),
@@ -1190,7 +1258,7 @@ fun SystemMetricsHeader(
             FilledTonalButton(
                 onClick = onShowExport,
                 modifier = Modifier
-                    .weight(1.2f)
+                    .weight(1f)
                     .height(36.dp)
                     .testTag("export_snapshot_button"),
                 shape = RoundedCornerShape(10.dp),
@@ -1204,6 +1272,14 @@ fun SystemMetricsHeader(
                 Text("Export", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 11.sp))
             }
         }
+    }
+}
+
+@Composable
+private fun BatteryDetail(label: String, value: String, alignment: Alignment.Horizontal = Alignment.Start) {
+    Column(horizontalAlignment = alignment) {
+        Text(label, style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp), color = SleekTextSubtle)
+        Text(value, style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace, fontWeight = FontWeight.SemiBold), color = SleekOnBackground)
     }
 }
 

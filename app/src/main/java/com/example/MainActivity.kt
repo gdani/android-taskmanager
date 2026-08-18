@@ -40,6 +40,8 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.NetworkPing
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material.icons.filled.Speed
@@ -70,6 +72,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -84,6 +88,7 @@ import com.example.ui.components.PingUtilityDialog
 import com.example.ui.components.ProcessDetailSheet
 import com.example.ui.components.ProcessFilterBar
 import com.example.ui.components.ProcessTableView
+import com.example.ui.components.ShellWindowDialog
 import com.example.ui.components.SpawnTestTaskDialog
 import com.example.ui.components.SystemInfoDialog
 import com.example.ui.components.SystemMetricsHeader
@@ -221,6 +226,8 @@ fun ProcessManagerApp(viewModel: ProcessManagerViewModel) {
                                 runningCount = uiState.systemStats.runningProcesses,
                                 onOpenMenu = { showNavigationMenu = true },
                                 onManualRefresh = { viewModel.refreshNow() },
+                                isPaused = uiState.isAutoRefreshPaused,
+                                onTogglePause = { viewModel.toggleAutoRefreshPause() },
                                 isRefreshing = uiState.isRefreshing
                             )
 
@@ -300,6 +307,7 @@ fun ProcessManagerApp(viewModel: ProcessManagerViewModel) {
                 onShowSpeedTest = { viewModel.setShowSpeedTestDialog(true) },
                 onShowPing = { viewModel.setShowPingDialog(true) },
                 onShowTraceroute = { viewModel.setShowTracerouteDialog(true) },
+                onShowShell = { viewModel.setShowShellDialog(true) },
                 onShowKillHistory = { selectedBottomNavIndex = 2 },
                 onShowSystemInfo = { selectedBottomNavIndex = 3 },
                 onShowExport = { viewModel.setShowExportDialog(true) },
@@ -351,6 +359,12 @@ fun ProcessManagerApp(viewModel: ProcessManagerViewModel) {
             )
         }
 
+        if (uiState.showShellDialog) {
+            ShellWindowDialog(
+                onDismiss = { viewModel.setShowShellDialog(false) }
+            )
+        }
+
         // Spawn Test Background Task Dialog
         if (uiState.showSpawnTaskDialog) {
             SpawnTestTaskDialog(
@@ -394,6 +408,8 @@ fun ProcessTabTopBar(
     runningCount: Int,
     onOpenMenu: () -> Unit,
     onManualRefresh: () -> Unit,
+    isPaused: Boolean,
+    onTogglePause: () -> Unit,
     isRefreshing: Boolean,
     modifier: Modifier = Modifier
 ) {
@@ -442,20 +458,37 @@ fun ProcessTabTopBar(
             }
         }
 
-        IconButton(
-            onClick = onManualRefresh,
-            modifier = Modifier
-                .size(36.dp)
-                .clip(CircleShape)
-                .background(SleekSurfaceVariant)
-                .testTag("process_tab_refresh_button")
-        ) {
-            Icon(
-                imageVector = Icons.Default.Refresh,
-                contentDescription = "Refresh Processes",
-                tint = if (isRefreshing) SleekPrimary else SleekOnBackground,
-                modifier = Modifier.size(18.dp)
-            )
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+            IconButton(
+                onClick = onTogglePause,
+                modifier = Modifier
+                    .size(24.dp)
+                    .clip(CircleShape)
+                    .background(SleekSurfaceVariant)
+                    .testTag("process_tab_toggle_pause_button")
+            ) {
+                Icon(
+                    imageVector = if (isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                    contentDescription = if (isPaused) "Resume Live Monitor" else "Pause Live Monitor",
+                    tint = SleekOnBackground,
+                    modifier = Modifier.size(14.dp)
+                )
+            }
+            IconButton(
+                onClick = onManualRefresh,
+                modifier = Modifier
+                    .size(24.dp)
+                    .clip(CircleShape)
+                    .background(SleekSurfaceVariant)
+                    .testTag("process_tab_refresh_button")
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = "Refresh Processes",
+                    tint = if (isRefreshing) SleekPrimary else SleekOnBackground,
+                    modifier = Modifier.size(14.dp)
+                )
+            }
         }
     }
 }
@@ -630,6 +663,8 @@ fun InlineSystemSpecsView(
     stats: SystemStats,
     modifier: Modifier = Modifier
 ) {
+    val configuration = LocalConfiguration.current
+    val displayMetrics = LocalContext.current.resources.displayMetrics
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -711,6 +746,50 @@ fun InlineSystemSpecsView(
                 SpecsRowItem(label = "Total Threads", value = "${stats.totalThreads} active")
                 SpecsRowDivider()
                 SpecsRowItem(label = "System Uptime", value = stats.systemUptime)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = SleekSurface),
+            border = androidx.compose.foundation.BorderStroke(1.dp, SleekBorder)
+        ) {
+            Column(modifier = Modifier.padding(14.dp)) {
+                Text("BATTERY", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp, fontSize = 10.sp), color = SleekPrimary)
+                Spacer(modifier = Modifier.height(8.dp))
+                SpecsRowItem(label = "Charge", value = "${stats.batteryLevelPercent}% • ${stats.batteryStatus}")
+                SpecsRowDivider()
+                SpecsRowItem(label = "Health", value = stats.batteryHealth)
+                SpecsRowDivider()
+                SpecsRowItem(label = "Temperature", value = "${String.format(Locale.getDefault(), "%.1f", stats.batteryTemperatureC)} °C")
+                SpecsRowDivider()
+                SpecsRowItem(label = "Voltage", value = "${stats.batteryVoltageMv} mV")
+                SpecsRowDivider()
+                SpecsRowItem(label = "Technology", value = stats.batteryTechnology)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = SleekSurface),
+            border = androidx.compose.foundation.BorderStroke(1.dp, SleekBorder)
+        ) {
+            Column(modifier = Modifier.padding(14.dp)) {
+                Text("DISPLAY", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp, fontSize = 10.sp), color = SleekPrimary)
+                Spacer(modifier = Modifier.height(8.dp))
+                SpecsRowItem(label = "Resolution", value = "${displayMetrics.widthPixels} × ${displayMetrics.heightPixels} px")
+                SpecsRowDivider()
+                SpecsRowItem(label = "Usable size", value = "${configuration.screenWidthDp} × ${configuration.screenHeightDp} dp")
+                SpecsRowDivider()
+                SpecsRowItem(label = "Density", value = "${String.format(Locale.getDefault(), "%.2f", displayMetrics.density)} (${displayMetrics.densityDpi} dpi)")
+                SpecsRowDivider()
+                SpecsRowItem(label = "Orientation", value = if (configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE) "Landscape" else "Portrait")
             }
         }
 

@@ -175,7 +175,14 @@ data class SystemStats(
     val wifiSsid: String = "Home_WiFi_5G",
     val mobileCarrierName: String = "T-Mobile 4G",
     val activeInterface: String = "wlan0 (802.11ax / 5 GHz)",
-    val networkLatencyAndJitter: String = "18 ms • 1.2 ms jitter"
+    val networkLatencyAndJitter: String = "18 ms • 1.2 ms jitter",
+    // Battery metrics
+    val batteryLevelPercent: Int = 0,
+    val batteryStatus: String = "Unknown",
+    val batteryHealth: String = "Unknown",
+    val batteryTemperatureC: Float = 0f,
+    val batteryVoltageMv: Int = 0,
+    val batteryTechnology: String = "Unknown"
 ) {
     val memoryUsagePercent: Double
         get() = if (totalMemoryBytes > 0) {

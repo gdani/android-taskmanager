@@ -4,6 +4,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.Settings
 import android.widget.Toast
@@ -51,6 +52,7 @@ import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -92,6 +94,18 @@ fun ProcessDetailSheet(
     sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 ) {
     val context = LocalContext.current
+    val appPermissions = remember(process.packageName) {
+        process.packageName?.let { packageName ->
+            runCatching {
+                context.packageManager.getPackageInfo(packageName, PackageManager.GET_PERMISSIONS)
+                    .requestedPermissions
+                    ?.map { permission ->
+                        permission to (context.packageManager.checkPermission(permission, packageName) == PackageManager.PERMISSION_GRANTED)
+                    }
+                    .orEmpty()
+            }.getOrDefault(emptyList())
+        }.orEmpty()
+    }
 
     fun copyToClipboard(text: String, label: String) {
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -241,6 +255,48 @@ fun ProcessDetailSheet(
                 MetricRow(label = "User & App Data Size", value = process.formattedDataSize, valueColor = SleekPrimary)
                 MetricRow(label = "Temporary Cache Footprint", value = process.formattedCacheSize, valueColor = SleekWarning)
                 MetricRow(label = "Total Storage Allocated", value = process.formattedTotalSize, valueColor = SleekSuccess)
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Permission inspection is read-only here; Android owns grants for other apps.
+            Text(
+                text = "APPLICATION PERMISSIONS",
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp),
+                color = SleekPrimary
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(SleekSurfaceVariant)
+                    .border(1.dp, SleekBorderLight, RoundedCornerShape(16.dp))
+                    .padding(14.dp)
+                    .testTag("app_permissions_section")
+            ) {
+                if (process.packageName == null) {
+                    Text("Permissions are unavailable for this system process.", style = MaterialTheme.typography.bodySmall, color = SleekTextMuted)
+                } else if (appPermissions.isEmpty()) {
+                    Text("No requested permissions were reported for this app.", style = MaterialTheme.typography.bodySmall, color = SleekTextMuted)
+                } else {
+                    appPermissions.forEach { (permission, granted) ->
+                        Row(modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                            Text(permission.substringAfterLast('.'), style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace, fontSize = 11.sp), color = SleekOnBackground)
+                            Text(if (granted) "Allowed" else "Not allowed", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = if (granted) SleekSuccess else SleekWarning)
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = { openAppInfo(process.packageName) },
+                        modifier = Modifier.fillMaxWidth().testTag("open_app_permissions_button"),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Icon(Icons.Default.OpenInNew, null, modifier = Modifier.size(15.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Open Android permission controls", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(14.dp))

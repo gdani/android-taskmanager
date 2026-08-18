@@ -2,8 +2,11 @@ package com.example.data.provider
 
 import android.app.ActivityManager
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.net.ConnectivityManager
 import android.net.TrafficStats
+import android.os.BatteryManager
 import android.os.Build
 import android.os.SystemClock
 import com.example.data.model.SystemStats
@@ -58,6 +61,7 @@ class SystemMetricsProvider(private val context: Context) {
         val uptime = formatUptime(SystemClock.elapsedRealtime())
         val netStats = calculateNetworkStats()
         val netDetails = resolveNetworkDetails()
+        val battery = readBatteryDetails()
 
         return SystemStats(
             totalCpuUsagePercent = totalCpu,
@@ -101,7 +105,52 @@ class SystemMetricsProvider(private val context: Context) {
             wifiSsid = netDetails.wifiSsid,
             mobileCarrierName = netDetails.mobileCarrier,
             activeInterface = netDetails.activeInterface,
-            networkLatencyAndJitter = netDetails.latencyAndJitter
+            networkLatencyAndJitter = netDetails.latencyAndJitter,
+            batteryLevelPercent = battery.level,
+            batteryStatus = battery.status,
+            batteryHealth = battery.health,
+            batteryTemperatureC = battery.temperatureC,
+            batteryVoltageMv = battery.voltageMv,
+            batteryTechnology = battery.technology
+        )
+    }
+
+    private data class BatteryDetails(
+        val level: Int,
+        val status: String,
+        val health: String,
+        val temperatureC: Float,
+        val voltageMv: Int,
+        val technology: String
+    )
+
+    private fun readBatteryDetails(): BatteryDetails {
+        val batteryIntent = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        val level = batteryIntent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
+        val scale = batteryIntent?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
+        val percentage = if (level >= 0 && scale > 0) (level * 100 / scale) else 0
+        val status = when (batteryIntent?.getIntExtra(BatteryManager.EXTRA_STATUS, -1)) {
+            BatteryManager.BATTERY_STATUS_CHARGING -> "Charging"
+            BatteryManager.BATTERY_STATUS_FULL -> "Full"
+            BatteryManager.BATTERY_STATUS_DISCHARGING -> "Discharging"
+            BatteryManager.BATTERY_STATUS_NOT_CHARGING -> "Not charging"
+            else -> "Unknown"
+        }
+        val health = when (batteryIntent?.getIntExtra(BatteryManager.EXTRA_HEALTH, -1)) {
+            BatteryManager.BATTERY_HEALTH_GOOD -> "Good"
+            BatteryManager.BATTERY_HEALTH_OVERHEAT -> "Overheat"
+            BatteryManager.BATTERY_HEALTH_DEAD -> "Dead"
+            BatteryManager.BATTERY_HEALTH_OVER_VOLTAGE -> "Over-voltage"
+            BatteryManager.BATTERY_HEALTH_COLD -> "Cold"
+            else -> "Unknown"
+        }
+        return BatteryDetails(
+            level = percentage,
+            status = status,
+            health = health,
+            temperatureC = (batteryIntent?.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0) ?: 0) / 10f,
+            voltageMv = batteryIntent?.getIntExtra(BatteryManager.EXTRA_VOLTAGE, 0) ?: 0,
+            technology = batteryIntent?.getStringExtra(BatteryManager.EXTRA_TECHNOLOGY) ?: "Unknown"
         )
     }
 
