@@ -173,7 +173,9 @@ data class SystemStats(
     val wifiSignalStrength: String = "85% (-52 dBm)",
     val cellularSignalStrength: String = "4G LTE (4/5 bars)",
     val wifiSsid: String = "Home_WiFi_5G",
-    val mobileCarrierName: String = "T-Mobile 4G"
+    val mobileCarrierName: String = "T-Mobile 4G",
+    val activeInterface: String = "wlan0 (802.11ax / 5 GHz)",
+    val networkLatencyAndJitter: String = "18 ms • 1.2 ms jitter"
 ) {
     val memoryUsagePercent: Double
         get() = if (totalMemoryBytes > 0) {

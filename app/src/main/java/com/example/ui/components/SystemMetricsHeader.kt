@@ -1114,11 +1114,11 @@ fun SystemMetricsHeader(
                         ) {
                             Column {
                                 Text("Active Interface", style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp), color = SleekTextSubtle)
-                                Text("wlan0 (802.11ax / 5 GHz)", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 10.sp), color = SleekOnBackground)
+                                Text(stats.activeInterface, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 10.sp), color = SleekOnBackground)
                             }
                             Column(horizontalAlignment = Alignment.End) {
                                 Text("Est. Latency / Jitter", style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp), color = SleekTextSubtle)
-                                Text("18 ms • 1.2 ms jitter", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 10.sp), color = SleekSuccess)
+                                Text(stats.networkLatencyAndJitter, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 10.sp), color = SleekSuccess)
                             }
                         }
 

@@ -156,7 +156,7 @@ fun UsageTrendChart(
             .padding(14.dp)
             .testTag("usage_trend_chart")
     ) {
-        // Top Header: Title & Time Window Selector
+        // Top Header: Title & Icon
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -206,8 +206,16 @@ fun UsageTrendChart(
                     )
                 }
             }
+        }
 
-            // Time Window Selector (1m / 2m / 5m)
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Time Window Selector (1m / 2m / 5m) - Below the 2 title lines
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 val windows = listOf(60 to "1m", 120 to "2m", 300 to "5m")
                 windows.forEach { (sec, label) ->
