@@ -1,0 +1,7 @@
+{
+  "name": "ProcMaster",
+  "description": "Real-time process and task manager with CPU/memory tracking, full command line inspection, single-click termination, and filterable table.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
