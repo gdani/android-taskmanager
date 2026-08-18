@@ -68,6 +68,7 @@ fun NavigationMenuSheet(
     onShowSystemInfo: () -> Unit,
     onShowExport: () -> Unit,
     onSpawnTestTask: () -> Unit,
+    onTerminateAllBackgroundApps: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -300,6 +301,21 @@ fun NavigationMenuSheet(
                 onClick = {
                     onDismiss()
                     onShowExport()
+                }
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // Terminate All Background Apps (Req #5)
+            MenuNavigationItem(
+                icon = Icons.Default.Close,
+                title = "Terminate Suspended / Background Apps",
+                subtitle = "Instantly clean all cached, suspended and background processes",
+                isSelected = false,
+                testTag = "menu_action_terminate_bg",
+                onClick = {
+                    onDismiss()
+                    onTerminateAllBackgroundApps()
                 }
             )
         }

@@ -356,39 +356,6 @@ fun SystemMetricsHeader(
                         style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
                         color = SleekOnPrimaryContainer.copy(alpha = 0.75f)
                     )
-
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    // Processes consuming CPU (> 5% or top active) (Req #3)
-                    Text(
-                        text = "TOP CONSUMERS (>5%):",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 9.sp
-                        ),
-                        color = SleekPrimary
-                    )
-
-                    Spacer(modifier = Modifier.height(3.dp))
-
-                    if (cpuConsumers.isEmpty()) {
-                        Text(
-                            text = "No processes > 5%",
-                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.sp),
-                            color = SleekOnPrimaryContainer.copy(alpha = 0.6f)
-                        )
-                    } else {
-                        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                            cpuConsumers.forEach { proc ->
-                                ProcessConsumerPill(
-                                    process = proc,
-                                    metricText = "${String.format(java.util.Locale.US, "%.1f", proc.cpuPercent)}%",
-                                    isHigh = proc.cpuPercent >= 5.0,
-                                    onClick = { onOpenProcessDetail(proc) }
-                                )
-                            }
-                        }
-                    }
                 }
             }
 
@@ -461,42 +428,6 @@ fun SystemMetricsHeader(
                         style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
                         color = SleekTextMuted
                     )
-
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    // Processes consuming RAM (> 5% or top active) (Req #3)
-                    Text(
-                        text = "TOP CONSUMERS (>5%):",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 9.sp
-                        ),
-                        color = SleekMemory
-                    )
-
-                    Spacer(modifier = Modifier.height(3.dp))
-
-                    if (ramConsumers.isEmpty()) {
-                        Text(
-                            text = "No processes > 5%",
-                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.sp),
-                            color = SleekTextMuted
-                        )
-                    } else {
-                        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                            ramConsumers.forEach { proc ->
-                                val pct = if (stats.totalMemoryBytes > 0) {
-                                    (proc.memoryBytes.toDouble() / stats.totalMemoryBytes) * 100.0
-                                } else 0.0
-                                ProcessConsumerPill(
-                                    process = proc,
-                                    metricText = "${proc.formattedMemory} (${String.format(java.util.Locale.US, "%.1f", pct)}%)",
-                                    isHigh = pct >= 5.0,
-                                    onClick = { onOpenProcessDetail(proc) }
-                                )
-                            }
-                        }
-                    }
                 }
             }
         }
@@ -635,6 +566,40 @@ fun SystemMetricsHeader(
                             RamAllocationRow(label = "• Page Cache & Buffers (Fast File IO)", value = "Cached: ${stats.formattedCachedRam}", color = SleekSuccess)
                             RamAllocationRow(label = "• ZRAM / Compressed Memory Swap", value = "Active (~350 MB compressed)", color = Color(0xFF38BDF8))
 
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Text(
+                                text = "TOP RAM CONSUMERS (>5%):",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 9.sp
+                                ),
+                                color = SleekMemory
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            if (ramConsumers.isEmpty()) {
+                                Text(
+                                    text = "No processes > 5%",
+                                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.sp),
+                                    color = SleekTextMuted
+                                )
+                            } else {
+                                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                    ramConsumers.forEach { proc ->
+                                        val pct = if (stats.totalMemoryBytes > 0) {
+                                            (proc.memoryBytes.toDouble() / stats.totalMemoryBytes) * 100.0
+                                        } else 0.0
+                                        ProcessConsumerPill(
+                                            process = proc,
+                                            metricText = "${proc.formattedMemory} (${String.format(java.util.Locale.US, "%.1f", pct)}%)",
+                                            isHigh = pct >= 5.0,
+                                            onClick = { onOpenProcessDetail(proc) }
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
                             AnimatedVisibility(visible = showRamExplainer) {
                                 Column(modifier = Modifier.padding(top = 8.dp)) {
                                     Box(
@@ -728,6 +693,35 @@ fun SystemMetricsHeader(
                                     modifier = Modifier.width(28.dp)
                                 )
                             }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = "TOP CPU CONSUMERS (>5%):",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 9.sp
+                    ),
+                    color = SleekPrimary
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                if (cpuConsumers.isEmpty()) {
+                    Text(
+                        text = "No processes > 5%",
+                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.sp),
+                        color = SleekTextMuted
+                    )
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        cpuConsumers.forEach { proc ->
+                            ProcessConsumerPill(
+                                process = proc,
+                                metricText = "${String.format(java.util.Locale.US, "%.1f", proc.cpuPercent)}%",
+                                isHigh = proc.cpuPercent >= 5.0,
+                                onClick = { onOpenProcessDetail(proc) }
+                            )
                         }
                     }
                 }
@@ -958,6 +952,13 @@ fun SystemMetricsHeader(
                             }
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
+                                stats.wifiSsid,
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold, fontSize = 9.sp),
+                                color = SleekOnBackground,
+                                maxLines = 1
+                            )
+                            Spacer(modifier = Modifier.height(1.dp))
+                            Text(
                                 "↓ ${stats.formattedWifiRxSpeed}",
                                 style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace, fontSize = 10.sp),
                                 color = SleekOnBackground
@@ -986,6 +987,13 @@ fun SystemMetricsHeader(
                                 Text("Mobile Net", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 10.sp), color = SleekWarning)
                             }
                             Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                stats.mobileCarrierName,
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold, fontSize = 9.sp),
+                                color = SleekOnBackground,
+                                maxLines = 1
+                            )
+                            Spacer(modifier = Modifier.height(1.dp))
                             Text(
                                 "↓ ${stats.formattedMobileRxSpeed}",
                                 style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace, fontSize = 10.sp),
@@ -1146,7 +1154,7 @@ fun SystemMetricsHeader(
             ElevatedButton(
                 onClick = onOpenSpeedTest,
                 modifier = Modifier
-                    .weight(1f)
+                    .weight(0.85f)
                     .height(36.dp)
                     .testTag("open_speed_test_header_button"),
                 shape = RoundedCornerShape(10.dp),
@@ -1164,7 +1172,7 @@ fun SystemMetricsHeader(
             FilledTonalButton(
                 onClick = onSpawnTestTask,
                 modifier = Modifier
-                    .weight(0.9f)
+                    .weight(0.95f)
                     .height(36.dp)
                     .testTag("spawn_test_task_button"),
                 shape = RoundedCornerShape(10.dp),
@@ -1182,7 +1190,7 @@ fun SystemMetricsHeader(
             FilledTonalButton(
                 onClick = onShowExport,
                 modifier = Modifier
-                    .weight(0.8f)
+                    .weight(1.2f)
                     .height(36.dp)
                     .testTag("export_snapshot_button"),
                 shape = RoundedCornerShape(10.dp),

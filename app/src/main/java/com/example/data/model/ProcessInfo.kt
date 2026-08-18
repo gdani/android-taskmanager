@@ -171,7 +171,9 @@ data class SystemStats(
     val gatewayIp: String = "192.168.1.1",
     val externalIp: String = "142.250.190.46",
     val wifiSignalStrength: String = "85% (-52 dBm)",
-    val cellularSignalStrength: String = "4G LTE (4/5 bars)"
+    val cellularSignalStrength: String = "4G LTE (4/5 bars)",
+    val wifiSsid: String = "Home_WiFi_5G",
+    val mobileCarrierName: String = "T-Mobile 4G"
 ) {
     val memoryUsagePercent: Double
         get() = if (totalMemoryBytes > 0) {

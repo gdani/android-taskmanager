@@ -304,6 +304,7 @@ fun ProcessManagerApp(viewModel: ProcessManagerViewModel) {
                 onShowSystemInfo = { selectedBottomNavIndex = 3 },
                 onShowExport = { viewModel.setShowExportDialog(true) },
                 onSpawnTestTask = { viewModel.setShowSpawnTaskDialog(true) },
+                onTerminateAllBackgroundApps = { viewModel.terminateAllBackgroundApps() },
                 onDismiss = { showNavigationMenu = false }
             )
         }

@@ -97,7 +97,9 @@ class SystemMetricsProvider(private val context: Context) {
             gatewayIp = netDetails.gateway,
             externalIp = netDetails.externalIp,
             wifiSignalStrength = netDetails.wifiSignal,
-            cellularSignalStrength = netDetails.cellularSignal
+            cellularSignalStrength = netDetails.cellularSignal,
+            wifiSsid = netDetails.wifiSsid,
+            mobileCarrierName = netDetails.mobileCarrier
         )
     }
 
@@ -108,7 +110,9 @@ class SystemMetricsProvider(private val context: Context) {
         val gateway: String,
         val externalIp: String,
         val wifiSignal: String,
-        val cellularSignal: String
+        val cellularSignal: String,
+        val wifiSsid: String,
+        val mobileCarrier: String
     )
 
     private fun resolveNetworkDetails(): NetworkDetails {
@@ -158,7 +162,9 @@ class SystemMetricsProvider(private val context: Context) {
             gateway = gateway,
             externalIp = "142.250.190.46",
             wifiSignal = "85% (-52 dBm)",
-            cellularSignal = "4G LTE (4/5 bars)"
+            cellularSignal = "4G LTE (4/5 bars)",
+            wifiSsid = "Home_WiFi_5G",
+            mobileCarrier = "T-Mobile 4G LTE"
         )
     }
 
