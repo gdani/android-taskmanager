@@ -109,10 +109,13 @@ fun ProcessManagerApp(viewModel: ProcessManagerViewModel) {
                 onSelectTab = { index ->
                     selectedBottomNavIndex = index
                     when (index) {
+                        0 -> {
+                            // When clicking Processes, trends chart collapses to the background
+                            viewModel.setChartExpanded(false)
+                        }
                         1 -> {
-                            if (!uiState.isChartExpanded) {
-                                viewModel.toggleChartExpanded()
-                            }
+                            // When clicking Trends, trends chart expands prominently
+                            viewModel.setChartExpanded(true)
                         }
                         2 -> viewModel.setShowKillHistoryDialog(true)
                         3 -> viewModel.setShowSystemInfoDialog(true)
@@ -152,12 +155,16 @@ fun ProcessManagerApp(viewModel: ProcessManagerViewModel) {
                 onToggleExpand = { viewModel.toggleChartExpanded() }
             )
 
-            // Search, Multi-Filter, and Mode Bar
+            // Search, Multi-Filter, System/Background Toggles, and Mode Bar
             ProcessFilterBar(
                 searchQuery = uiState.searchQuery,
                 onSearchChange = { viewModel.onSearchQueryChange(it) },
                 selectedCategory = uiState.selectedCategory,
                 onSelectCategory = { viewModel.onCategorySelected(it) },
+                showSystemProcesses = uiState.showSystemProcesses,
+                onToggleShowSystemProcesses = { viewModel.toggleShowSystemProcesses() },
+                showBackgroundProcesses = uiState.showBackgroundProcesses,
+                onToggleShowBackgroundProcesses = { viewModel.toggleShowBackgroundProcesses() },
                 totalCount = uiState.processes.size,
                 filteredCount = uiState.filteredProcesses.size,
                 isMultiSelectMode = uiState.isMultiSelectMode,

@@ -38,7 +38,9 @@ enum class ProcessCategoryFilter(val label: String) {
     ALL("All"),
     USER_APPS("User Apps"),
     SYSTEM("System"),
+    BACKGROUND("Background"),
     SERVICES("Services"),
+    DAEMONS("Daemons"),
     HIGH_CPU("High CPU (>2%)"),
     HIGH_RAM("High RAM (>50MB)"),
     TEST_WORKERS("Test Tasks")

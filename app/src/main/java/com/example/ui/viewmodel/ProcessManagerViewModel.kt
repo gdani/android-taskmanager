@@ -32,7 +32,9 @@ data class ProcessManagerUiState(
     val metricHistory: List<MetricPoint> = emptyList(),
     val selectedTimeWindowSeconds: Int = 60,
     val selectedChartMetric: ChartMetricFilter = ChartMetricFilter.BOTH,
-    val isChartExpanded: Boolean = true,
+    val isChartExpanded: Boolean = false,
+    val showSystemProcesses: Boolean = true,
+    val showBackgroundProcesses: Boolean = true,
     val searchQuery: String = "",
     val selectedCategory: ProcessCategoryFilter = ProcessCategoryFilter.ALL,
     val sortColumn: ProcessSortColumn = ProcessSortColumn.CPU,
@@ -168,7 +170,9 @@ class ProcessManagerViewModel(application: Application) : AndroidViewModel(appli
                     currentState.searchQuery,
                     currentState.selectedCategory,
                     currentState.sortColumn,
-                    currentState.isSortAscending
+                    currentState.isSortAscending,
+                    currentState.showSystemProcesses,
+                    currentState.showBackgroundProcesses
                 )
                 
                 // If detail sheet is open, keep selected process reference fresh
@@ -195,7 +199,9 @@ class ProcessManagerViewModel(application: Application) : AndroidViewModel(appli
                 query,
                 state.selectedCategory,
                 state.sortColumn,
-                state.isSortAscending
+                state.isSortAscending,
+                state.showSystemProcesses,
+                state.showBackgroundProcesses
             )
             state.copy(searchQuery = query, filteredProcesses = filtered)
         }
@@ -208,7 +214,9 @@ class ProcessManagerViewModel(application: Application) : AndroidViewModel(appli
                 state.searchQuery,
                 category,
                 state.sortColumn,
-                state.isSortAscending
+                state.isSortAscending,
+                state.showSystemProcesses,
+                state.showBackgroundProcesses
             )
             state.copy(selectedCategory = category, filteredProcesses = filtered)
         }
@@ -222,9 +230,81 @@ class ProcessManagerViewModel(application: Application) : AndroidViewModel(appli
                 state.searchQuery,
                 state.selectedCategory,
                 column,
-                newAscending
+                newAscending,
+                state.showSystemProcesses,
+                state.showBackgroundProcesses
             )
             state.copy(sortColumn = column, isSortAscending = newAscending, filteredProcesses = filtered)
+        }
+    }
+
+    fun toggleShowSystemProcesses() {
+        _uiState.update { state ->
+            val newShow = !state.showSystemProcesses
+            val filtered = applyFilterAndSort(
+                state.processes,
+                state.searchQuery,
+                state.selectedCategory,
+                state.sortColumn,
+                state.isSortAscending,
+                newShow,
+                state.showBackgroundProcesses
+            )
+            state.copy(
+                showSystemProcesses = newShow,
+                filteredProcesses = filtered,
+                snackbarMessage = if (newShow) "Showing system processes" else "Hiding system processes"
+            )
+        }
+    }
+
+    fun toggleShowBackgroundProcesses() {
+        _uiState.update { state ->
+            val newShow = !state.showBackgroundProcesses
+            val filtered = applyFilterAndSort(
+                state.processes,
+                state.searchQuery,
+                state.selectedCategory,
+                state.sortColumn,
+                state.isSortAscending,
+                state.showSystemProcesses,
+                newShow
+            )
+            state.copy(
+                showBackgroundProcesses = newShow,
+                filteredProcesses = filtered,
+                snackbarMessage = if (newShow) "Showing background & daemon processes" else "Hiding background processes"
+            )
+        }
+    }
+
+    fun setShowSystemProcesses(show: Boolean) {
+        _uiState.update { state ->
+            val filtered = applyFilterAndSort(
+                state.processes,
+                state.searchQuery,
+                state.selectedCategory,
+                state.sortColumn,
+                state.isSortAscending,
+                show,
+                state.showBackgroundProcesses
+            )
+            state.copy(showSystemProcesses = show, filteredProcesses = filtered)
+        }
+    }
+
+    fun setShowBackgroundProcesses(show: Boolean) {
+        _uiState.update { state ->
+            val filtered = applyFilterAndSort(
+                state.processes,
+                state.searchQuery,
+                state.selectedCategory,
+                state.sortColumn,
+                state.isSortAscending,
+                state.showSystemProcesses,
+                show
+            )
+            state.copy(showBackgroundProcesses = show, filteredProcesses = filtered)
         }
     }
 
@@ -259,7 +339,9 @@ class ProcessManagerViewModel(application: Application) : AndroidViewModel(appli
                         state.searchQuery,
                         state.selectedCategory,
                         state.sortColumn,
-                        state.isSortAscending
+                        state.isSortAscending,
+                        state.showSystemProcesses,
+                        state.showBackgroundProcesses
                     )
                     state.copy(
                         processes = updatedProcesses,
@@ -291,7 +373,9 @@ class ProcessManagerViewModel(application: Application) : AndroidViewModel(appli
                         state.searchQuery,
                         state.selectedCategory,
                         state.sortColumn,
-                        state.isSortAscending
+                        state.isSortAscending,
+                        state.showSystemProcesses,
+                        state.showBackgroundProcesses
                     )
                     state.copy(
                         processes = updatedProcesses,
@@ -324,7 +408,9 @@ class ProcessManagerViewModel(application: Application) : AndroidViewModel(appli
                         state.searchQuery,
                         state.selectedCategory,
                         state.sortColumn,
-                        state.isSortAscending
+                        state.isSortAscending,
+                        state.showSystemProcesses,
+                        state.showBackgroundProcesses
                     )
                     state.copy(
                         processes = updatedProcesses,
@@ -394,6 +480,10 @@ class ProcessManagerViewModel(application: Application) : AndroidViewModel(appli
 
     fun setSelectedChartMetric(filter: ChartMetricFilter) {
         _uiState.update { it.copy(selectedChartMetric = filter) }
+    }
+
+    fun setChartExpanded(expanded: Boolean) {
+        _uiState.update { it.copy(isChartExpanded = expanded) }
     }
 
     fun toggleChartExpanded() {
@@ -491,7 +581,9 @@ class ProcessManagerViewModel(application: Application) : AndroidViewModel(appli
         searchQuery: String,
         category: ProcessCategoryFilter,
         sortColumn: ProcessSortColumn,
-        ascending: Boolean
+        ascending: Boolean,
+        showSystem: Boolean,
+        showBackground: Boolean
     ): List<ProcessInfo> {
         val q = searchQuery.trim().lowercase()
 
@@ -509,18 +601,33 @@ class ProcessManagerViewModel(application: Application) : AndroidViewModel(appli
             }
         }
 
-        // 2. Category Filter
+        // 2. System & Background Process Toggles
+        if (!showSystem) {
+            filtered = filtered.filter { proc ->
+                proc.type != ProcessCategory.SYSTEM && proc.user != "root" && !(proc.user == "system" && proc.type != ProcessCategory.APP)
+            }
+        }
+
+        if (!showBackground) {
+            filtered = filtered.filter { proc ->
+                proc.type != ProcessCategory.SERVICE && proc.type != ProcessCategory.DAEMON
+            }
+        }
+
+        // 3. Category Filter
         filtered = when (category) {
             ProcessCategoryFilter.ALL -> filtered
             ProcessCategoryFilter.USER_APPS -> filtered.filter { it.type == ProcessCategory.APP }
-            ProcessCategoryFilter.SYSTEM -> filtered.filter { it.type == ProcessCategory.SYSTEM }
+            ProcessCategoryFilter.SYSTEM -> filtered.filter { it.type == ProcessCategory.SYSTEM || it.user == "root" || it.user == "system" }
+            ProcessCategoryFilter.BACKGROUND -> filtered.filter { it.type == ProcessCategory.SERVICE || it.type == ProcessCategory.DAEMON }
             ProcessCategoryFilter.SERVICES -> filtered.filter { it.type == ProcessCategory.SERVICE }
+            ProcessCategoryFilter.DAEMONS -> filtered.filter { it.type == ProcessCategory.DAEMON }
             ProcessCategoryFilter.HIGH_CPU -> filtered.filter { it.cpuPercent >= 2.0 }
             ProcessCategoryFilter.HIGH_RAM -> filtered.filter { it.memoryBytes >= 50L * 1024L * 1024L }
             ProcessCategoryFilter.TEST_WORKERS -> filtered.filter { it.type == ProcessCategory.TEST_WORKER }
         }
 
-        // 3. Sorting
+        // 4. Sorting
         val comparator: Comparator<ProcessInfo> = when (sortColumn) {
             ProcessSortColumn.PID -> compareBy { it.pid }
             ProcessSortColumn.NAME -> compareBy(String.CASE_INSENSITIVE_ORDER) { it.displayTitle }

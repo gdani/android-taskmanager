@@ -72,4 +72,18 @@ class ExampleRobolectricTest {
     val window300 = points.filter { it.timestampMs >= now - 300_000L }
     assertEquals(4, window300.size)
   }
+
+  @Test
+  fun `test system and background processes presence and categorization`() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val scope = CoroutineScope(Dispatchers.Unconfined)
+    val provider = ProcessDataProvider(context, scope)
+
+    val procs = provider.fetchRunningProcesses(8L * 1024L * 1024L * 1024L)
+    val hasSystemOrRoot = procs.any { it.type == ProcessCategory.SYSTEM || it.user == "root" || it.user == "system" }
+    assertTrue("Should contain system processes", hasSystemOrRoot)
+
+    val hasServiceOrDaemon = procs.any { it.type == ProcessCategory.SERVICE || it.type == ProcessCategory.DAEMON }
+    assertTrue("Should contain service or daemon background processes", hasServiceOrDaemon)
+  }
 }

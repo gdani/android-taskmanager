@@ -20,12 +20,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SelectAll
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.TableRows
 import androidx.compose.material.icons.filled.ViewAgenda
 import androidx.compose.material3.ButtonDefaults
@@ -38,6 +41,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -75,6 +80,10 @@ fun ProcessFilterBar(
     onSearchChange: (String) -> Unit,
     selectedCategory: ProcessCategoryFilter,
     onSelectCategory: (ProcessCategoryFilter) -> Unit,
+    showSystemProcesses: Boolean,
+    onToggleShowSystemProcesses: () -> Unit,
+    showBackgroundProcesses: Boolean,
+    onToggleShowBackgroundProcesses: () -> Unit,
     totalCount: Int,
     filteredCount: Int,
     isMultiSelectMode: Boolean,
@@ -308,6 +317,91 @@ fun ProcessFilterBar(
 
         Spacer(modifier = Modifier.height(8.dp))
 
+        // System & Background Process Toggles Row
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // System Processes Toggle Pill
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(if (showSystemProcesses) SleekPrimaryContainer else SleekSurfaceVariant)
+                    .border(
+                        1.dp,
+                        if (showSystemProcesses) SleekPrimaryBorder else SleekBorder,
+                        RoundedCornerShape(12.dp)
+                    )
+                    .clickable { onToggleShowSystemProcesses() }
+                    .padding(horizontal = 10.dp, vertical = 6.dp)
+                    .testTag("toggle_system_processes_switch"),
+                contentAlignment = Alignment.Center
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = "System Processes Toggle",
+                        tint = if (showSystemProcesses) SleekPrimary else SleekTextMuted,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = if (showSystemProcesses) "System: ON" else "System: OFF",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = if (showSystemProcesses) FontWeight.Bold else FontWeight.Normal,
+                            fontSize = 11.sp
+                        ),
+                        color = if (showSystemProcesses) SleekOnPrimaryContainer else SleekTextMuted
+                    )
+                }
+            }
+
+            // Background Processes Toggle Pill
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(if (showBackgroundProcesses) SleekSecondaryContainer else SleekSurfaceVariant)
+                    .border(
+                        1.dp,
+                        if (showBackgroundProcesses) SleekPrimaryBorder else SleekBorder,
+                        RoundedCornerShape(12.dp)
+                    )
+                    .clickable { onToggleShowBackgroundProcesses() }
+                    .padding(horizontal = 10.dp, vertical = 6.dp)
+                    .testTag("toggle_background_processes_switch"),
+                contentAlignment = Alignment.Center
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Layers,
+                        contentDescription = "Background Processes Toggle",
+                        tint = if (showBackgroundProcesses) SleekPrimary else SleekTextMuted,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = if (showBackgroundProcesses) "Background: ON" else "Background: OFF",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = if (showBackgroundProcesses) FontWeight.Bold else FontWeight.Normal,
+                            fontSize = 11.sp
+                        ),
+                        color = if (showBackgroundProcesses) SleekOnBackground else SleekTextMuted
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
         // Horizontal Filter Chips & Refresh Speed Pills
         Row(
             modifier = Modifier
@@ -363,7 +457,7 @@ fun ProcessFilterBar(
                     .background(SleekBorder)
             )
 
-            // Speed Interval Selector (1s, 2s, 5s)
+            // Speed Interval Selector (1s, 2s, 5s, Pause)
             val intervals = listOf(1000L to "1s", 2000L to "2s", 5000L to "5s", 0L to "Pause")
             intervals.forEach { (ms, label) ->
                 val isSelected = refreshIntervalMs == ms
