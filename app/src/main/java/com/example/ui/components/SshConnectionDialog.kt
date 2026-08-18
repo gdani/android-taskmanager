@@ -30,7 +30,29 @@ fun SshConnectionDialog(onDismiss: () -> Unit) {
     val lines = remember { mutableStateListOf("SSH terminal — enter credentials and connect.") }; val scope = rememberCoroutineScope(); var session by remember { mutableStateOf<Session?>(null) }; var shell by remember { mutableStateOf<ChannelShell?>(null) }; var output by remember { mutableStateOf<PrintStream?>(null) }
     fun disconnect() { shell?.disconnect(); session?.disconnect(); shell = null; session = null; output = null; connected = false; lines.add("Disconnected.") }
     fun connect() { val p = port.toIntOrNull(); if (host.isBlank() || username.isBlank() || password.isBlank() || p == null) { lines.add("Host, port, username, and password are required."); return }; scope.launch(Dispatchers.IO) { busy = true; try { val s = JSch().getSession(username, host, p).apply { setPassword(password); setConfig("StrictHostKeyChecking", "no"); connect(12_000) }; val ch = s.openChannel("shell") as ChannelShell; ch.setPty(true); ch.setPtyType("xterm"); val input = ch.inputStream; val out = PrintStream(ch.outputStream, true); ch.connect(); withContext(Dispatchers.Main) { prefs.edit().putString("host", host).putString("port", port).putString("username", username).apply(); session = s; shell = ch; output = out; connected = true; password = ""; lines.add("Connected to $host:$p as $username") }; scope.launch(Dispatchers.IO) { val buffer = ByteArray(2048); var count = input.read(buffer); while (count >= 0) { val text = String(buffer, 0, count); withContext(Dispatchers.Main) { lines.add(text) }; count = input.read(buffer) } } } catch (e: Exception) { withContext(Dispatchers.Main) { lines.add("Connection failed: ${e.localizedMessage ?: "Unknown error"}") } } finally { withContext(Dispatchers.Main) { busy = false } } } }
-    fun send() { val text = command.trim(); if (text.isNotBlank() && connected) { output?.println(text); lines.add("$ $text"); command = "" } }
+    fun send() {
+        val text = command.trim()
+        val activeSession = session
+        if (text.isBlank() || !connected || activeSession == null) return
+        lines.add("$ $text")
+        command = ""
+        scope.launch(Dispatchers.IO) {
+            try {
+                val channel = activeSession.openChannel("exec") as com.jcraft.jsch.ChannelExec
+                channel.setCommand(text)
+                val stdout = channel.inputStream
+                val stderr = channel.errStream
+                channel.connect(12_000)
+                val result = stdout.bufferedReader().readText() + stderr.bufferedReader().readText()
+                withContext(Dispatchers.Main) {
+                    lines.add(result.ifBlank { "[command completed with no output]" })
+                }
+                channel.disconnect()
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) { lines.add("Command failed: ${e.localizedMessage ?: "Unknown error"}") }
+            }
+        }
+    }
     Dialog(onDismissRequest = { disconnect(); onDismiss() }, properties = DialogProperties(usePlatformDefaultWidth = false)) { Surface(modifier = Modifier.fillMaxWidth(.96f).fillMaxHeight(.9f), shape = RoundedCornerShape(24.dp), color = SleekSurface) { Column(Modifier.padding(18.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("SSH Terminal", style = MaterialTheme.typography.titleLarge, color = SleekOnBackground); TextButton(onClick = { disconnect(); onDismiss() }) { Text("Close") } }
         if (!connected) { OutlinedTextField(host, { host = it }, label = { Text("Hostname or IP") }, modifier = Modifier.fillMaxWidth(), singleLine = true); Row(Modifier.fillMaxWidth()) { OutlinedTextField(username, { username = it }, label = { Text("Username") }, modifier = Modifier.weight(1f)); OutlinedTextField(port, { port = it }, label = { Text("Port") }, modifier = Modifier.width(90.dp)) }; OutlinedTextField(password, { password = it }, label = { Text("Password") }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth(), singleLine = true); FilledTonalButton(onClick = { connect() }, enabled = !busy) { Text(if (busy) "Connecting…" else "Connect") } } else { Text("$username@$host:$port", color = SleekPrimary) }
